@@ -1,5 +1,18 @@
 plugins {
     id("java")
+    id("application")
+}
+
+val main = "sd.cloudcomputing.client.Main"
+
+application {
+    mainClass.set(main)
+}
+
+tasks.withType<Jar> {
+    manifest {
+        attributes["Main-Class"] = main
+    }
 }
 
 group = "sd-grupo-1"
