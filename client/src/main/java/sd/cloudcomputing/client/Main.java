@@ -1,4 +1,4 @@
-package sd.clouldcomputing.client;
+package sd.cloudcomputing.client;
 
 import sd.cloudcomputing.common.Status;
 
