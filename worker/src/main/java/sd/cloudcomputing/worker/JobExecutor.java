@@ -5,20 +5,11 @@ import sd.cloudcomputing.common.JobResult;
 import sd23.JobFunction;
 import sd23.JobFunctionException;
 
-import java.util.function.Supplier;
+public class JobExecutor {
 
-public class JobExecutor implements Supplier<JobResult> {
-
-    private final JobRequest jobRequest;
-
-    public JobExecutor(JobRequest jobRequest) {
-        this.jobRequest = jobRequest;
-    }
-
-    @Override
-    public JobResult get() {
+    public JobResult execute(JobRequest jobRequest) {
         try {
-            byte[] execute = JobFunction.execute(this.jobRequest.getData());
+            byte[] execute = JobFunction.execute(jobRequest.getData());
             return JobResult.success(execute);
         } catch (JobFunctionException e) {
             return JobResult.failure(e.getCode(), e.getMessage());

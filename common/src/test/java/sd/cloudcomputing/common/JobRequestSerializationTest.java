@@ -21,7 +21,7 @@ class JobRequestSerializationTest {
 
     @Test
     void testSerialization() {
-        JobRequest jobRequest = new JobRequest(new byte[]{1, 2, 3, 4, 5});
+        JobRequest jobRequest = new JobRequest(0, new byte[]{1, 2, 3, 4, 5}, 500);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         SerializeOutput output = new SerializeOutput(new DataOutputStream(out));
@@ -36,12 +36,14 @@ class JobRequestSerializationTest {
 
         JobRequest deserialized = frost.readSerializable(JobRequest.class, input);
 
+        assertEquals(0, deserialized.getJobId());
         assertEquals(5, deserialized.getData().length);
         assertEquals(1, deserialized.getData()[0]);
         assertEquals(2, deserialized.getData()[1]);
         assertEquals(3, deserialized.getData()[2]);
         assertEquals(4, deserialized.getData()[3]);
         assertEquals(5, deserialized.getData()[4]);
+        assertEquals(500, deserialized.getMemoryNeeded());
     }
 
 }

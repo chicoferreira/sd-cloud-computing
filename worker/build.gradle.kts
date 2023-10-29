@@ -27,6 +27,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     implementation(project(":common"))
     implementation(files("libs/sd23.jar"))
+    implementation ("commons-cli:commons-cli:1.6.0")
 }
 
 tasks.test {

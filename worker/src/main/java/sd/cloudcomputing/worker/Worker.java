@@ -2,29 +2,44 @@ package sd.cloudcomputing.worker;
 
 import sd.cloudcomputing.common.JobRequest;
 import sd.cloudcomputing.common.JobResult;
+import sd.cloudcomputing.common.concurrent.BoundedBuffer;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
 
 public class Worker {
 
-    private final ExecutorService executorService;
+    private final WorkerScheduler workerScheduler;
+    private final BoundedBuffer<JobResult> queuedJobResults;
+
     private boolean running;
     private ServerSocket serverSocket;
 
-    public Worker(ExecutorService executorService) {
-        this.executorService = executorService;
+    private Thread readerThread;
+    private Thread jobResultHandlerThread;
+
+    public Worker(int maxMemoryCapacity, int maxConcurrentJobs) {
+        JobExecutor jobExecutor = new JobExecutor();
+        this.workerScheduler = new WorkerScheduler(jobExecutor, maxMemoryCapacity, maxConcurrentJobs, this::receiveJobResult);
+
+        this.queuedJobResults = new BoundedBuffer<>(100);
     }
 
     public void start(int port) {
         initServer(port);
         setupShutdownHook();
-        runServerLoop();
+
+        this.readerThread = new Thread(this::runServerLoop, "Worker-Server-Thread");
+        readerThread.start();
+
+        this.jobResultHandlerThread = new Thread(this::handleJobResults, "Worker-Job-Result-Handler-Thread");
+        jobResultHandlerThread.start();
+
+        this.workerScheduler.start();
+
         stop();
     }
 
@@ -52,7 +67,7 @@ public class Worker {
                 Object object = objectInputStream.readObject();
 
                 if (object instanceof JobRequest jobRequest) {
-                    CompletableFuture.supplyAsync(new JobExecutor(jobRequest), executorService).thenAccept(this::handleJobResult);
+                    this.workerScheduler.queue(jobRequest);
                 } else {
                     System.err.println("Received object is not a byte array");
                 }
@@ -62,21 +77,40 @@ public class Worker {
         }
     }
 
-    private void handleJobResult(JobResult jobResult) {
-        if (jobResult.getResultType() == JobResult.ResultType.FAILURE) {
-            System.out.println("Job failed with error code " + jobResult.getErrorCode() + ": " + jobResult.getErrorMessage());
-            return;
+    private void receiveJobResult(JobResult jobResult) {
+        try {
+            queuedJobResults.put(jobResult);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
+    }
 
-        System.out.println("Job succeeded with result: " + jobResult.getData().length + " bytes");
+    private void handleJobResults() {
+        while (running) {
+            try {
+                JobResult jobResult = queuedJobResults.take();
+                if (jobResult.getResultType() == JobResult.ResultType.FAILURE) {
+                    System.out.println("Job failed with error code " + jobResult.getErrorCode() + ": " + jobResult.getErrorMessage());
+                    return;
+                }
 
-        // TODO: send result back to server
+                System.out.println("Job succeeded with result: " + jobResult.getData().length + " bytes");
+
+                // TODO: send result back to server
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     private void stop() {
         try {
+            readerThread.join();
+            jobResultHandlerThread.join();
+
+            this.workerScheduler.stop();
             serverSocket.close();
-        } catch (IOException e) {
+        } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
     }
