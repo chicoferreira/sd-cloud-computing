@@ -1,5 +1,10 @@
 package sd.cloudcomputing.common;
 
+import sd.cloudcomputing.common.serialization.Frost;
+import sd.cloudcomputing.common.serialization.Serialize;
+import sd.cloudcomputing.common.serialization.SerializeInput;
+import sd.cloudcomputing.common.serialization.SerializeOutput;
+
 public class JobResult {
 
     private final ResultType resultType;
@@ -41,5 +46,33 @@ public class JobResult {
 
     public String getErrorMessage() {
         return this.errorMessage;
+    }
+
+    public static class Serialization implements Serialize<JobResult> {
+
+        @Override
+        public JobResult deserialize(SerializeInput input, Frost frost) {
+            ResultType type = frost.readBoolean(input) ? ResultType.SUCCESS : ResultType.FAILURE;
+            return switch (type) {
+                case FAILURE -> {
+                    String errorMessage = frost.readString(input);
+                    int errorCode = frost.readInt(input);
+                    yield JobResult.failure(errorCode, errorMessage);
+                }
+                case SUCCESS -> JobResult.success(frost.readBytes(input));
+            };
+        }
+
+        @Override
+        public void serialize(JobResult object, SerializeOutput output, Frost frost) {
+            frost.writeBoolean(object.getResultType() == ResultType.SUCCESS, output);
+            switch (object.getResultType()) {
+                case FAILURE -> {
+                    frost.writeString(object.getErrorMessage(), output);
+                    frost.writeInt(object.getErrorCode(), output);
+                }
+                case SUCCESS -> frost.writeBytes(object.getData(), output);
+            }
+        }
     }
 }
