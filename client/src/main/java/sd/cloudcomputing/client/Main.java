@@ -1,7 +1,9 @@
 package sd.cloudcomputing.client;
 
-import sd.cloudcomputing.common.Status;
-
 public class Main {
-    private static final Status status = Status.GOOD;
+
+    public static void main(String[] args) {
+        new Client().run();
+    }
+
 }
