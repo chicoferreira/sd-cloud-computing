@@ -3,6 +3,9 @@ package sd.cloudcomputing.worker;
 import sd.cloudcomputing.common.JobRequest;
 import sd.cloudcomputing.common.JobResult;
 import sd.cloudcomputing.common.concurrent.BoundedBuffer;
+import sd.cloudcomputing.common.logging.Logger;
+import sd.cloudcomputing.common.logging.impl.StdoutLogger;
+import sd.cloudcomputing.common.logging.impl.ThreadPrefixedLoggerFormat;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,54 +15,64 @@ import java.net.Socket;
 
 public class Worker {
 
+    private final Logger logger;
+
     private final WorkerScheduler workerScheduler;
     private final BoundedBuffer<JobResult> queuedJobResults;
 
     private boolean running;
     private ServerSocket serverSocket;
 
-    private Thread readerThread;
     private Thread jobResultHandlerThread;
 
     public Worker(int maxMemoryCapacity, int maxConcurrentJobs) {
+        this.logger = new StdoutLogger(new ThreadPrefixedLoggerFormat());
+
         JobExecutor jobExecutor = new JobExecutor();
-        this.workerScheduler = new WorkerScheduler(jobExecutor, maxMemoryCapacity, maxConcurrentJobs, this::receiveJobResult);
+        this.workerScheduler = new WorkerScheduler(this.logger, jobExecutor, maxMemoryCapacity, maxConcurrentJobs, this::receiveJobResult);
 
         this.queuedJobResults = new BoundedBuffer<>(100);
     }
 
-    public void start(int port) {
-        initServer(port);
+    public void run(int port) {
         setupShutdownHook();
 
-        this.readerThread = new Thread(this::runServerLoop, "Worker-Server-Thread");
-        readerThread.start();
+        Thread serverThread = new Thread(() -> runServer(port), "Worker-Server-Thread");
+        serverThread.start();
 
         this.jobResultHandlerThread = new Thread(this::handleJobResults, "Worker-Job-Result-Handler-Thread");
         jobResultHandlerThread.start();
 
         this.workerScheduler.start();
 
+        try {
+            serverThread.join();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        this.running = false;
+
         stop();
     }
 
     private void initServer(int port) {
         try {
-            ServerSocket serverSocket = new ServerSocket(port);
-            System.out.println("Worker listening on port " + port);
-            this.serverSocket = serverSocket;
+            this.serverSocket = new ServerSocket(port);
+            logger.info("Worker listening on port " + port);
         } catch (IOException ex) {
-            System.out.println("Server exception: " + ex.getMessage());
-            ex.printStackTrace();
+            logger.error("Couldn't start server in port " + port, ex);
         }
     }
 
-    private void runServerLoop() {
+    private void runServer(int port) {
         running = true;
-        while (running) {
-            try {
+        this.initServer(port);
+
+        try {
+            while (running) {
                 Socket socket = serverSocket.accept();
-                System.out.println("Server connected. Waiting for requests...");
+                logger.info("Server connected. Waiting for requests...");
 
                 // get the input stream from the connected socket
                 InputStream inputStream = socket.getInputStream();
@@ -69,55 +82,50 @@ public class Worker {
                 if (object instanceof JobRequest jobRequest) {
                     this.workerScheduler.queue(jobRequest);
                 } else {
-                    System.err.println("Received object is not a byte array");
+                    this.logger.warn("Received unknown object: " + object);
                 }
-            } catch (IOException | ClassNotFoundException e) {
-                e.printStackTrace();
             }
+        } catch (IOException | ClassNotFoundException e) {
+            logger.error("Failed to read from socket: ", e);
         }
     }
 
     private void receiveJobResult(JobResult jobResult) {
         try {
             queuedJobResults.put(jobResult);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+        } catch (InterruptedException ignored) {
         }
     }
 
     private void handleJobResults() {
-        while (running) {
-            try {
+        try {
+            while (running) {
                 JobResult jobResult = queuedJobResults.take();
                 if (jobResult.getResultType() == JobResult.ResultType.FAILURE) {
-                    System.out.println("Job failed with error code " + jobResult.getErrorCode() + ": " + jobResult.getErrorMessage());
-                    return;
+                    logger.info("Job failed with error code " + jobResult.getErrorCode() + ": " + jobResult.getErrorMessage());
+                } else {
+                    logger.info("Job succeeded with result: " + jobResult.getData().length + " bytes");
                 }
 
-                System.out.println("Job succeeded with result: " + jobResult.getData().length + " bytes");
-
                 // TODO: send result back to server
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
             }
+        } catch (InterruptedException ignored) {
         }
     }
 
     private void stop() {
         try {
-            readerThread.join();
-            jobResultHandlerThread.join();
-
+            this.jobResultHandlerThread.interrupt();
             this.workerScheduler.stop();
             serverSocket.close();
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
+        } catch (IOException e) {
+            logger.error("Failed to close server socket", e);
         }
     }
 
     private void setupShutdownHook() {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("Shutting down worker...");
+            logger.info("Shutting down worker...");
             running = false;
         }));
     }

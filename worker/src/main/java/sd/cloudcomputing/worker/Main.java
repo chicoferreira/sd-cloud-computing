@@ -24,6 +24,6 @@ public class Main {
         }
 
         Worker worker = new Worker(maxMemoryCapacity, maxConcurrentJobs);
-        worker.start(9900);
+        worker.run(9900);
     }
 }

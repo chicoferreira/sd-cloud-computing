@@ -3,6 +3,7 @@ package sd.cloudcomputing.worker;
 import sd.cloudcomputing.common.JobRequest;
 import sd.cloudcomputing.common.JobResult;
 import sd.cloudcomputing.common.concurrent.BoundedBuffer;
+import sd.cloudcomputing.common.logging.Logger;
 
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -11,6 +12,7 @@ import java.util.function.Consumer;
 public class WorkerScheduler {
 
     private final int maxMemoryCapacity;
+    private final Logger logger;
     private int currentMemoryUsage;
 
     private final ReentrantLock lock;
@@ -25,7 +27,9 @@ public class WorkerScheduler {
 
     private boolean running;
 
-    public WorkerScheduler(JobExecutor jobExecutor, int maxMemoryCapacity, int maxConcurrentJobs, Consumer<JobResult> endJobCallback) {
+    public WorkerScheduler(Logger logger, JobExecutor jobExecutor, int maxMemoryCapacity, int maxConcurrentJobs, Consumer<JobResult> endJobCallback) {
+        this.logger = logger;
+
         this.maxMemoryCapacity = maxMemoryCapacity;
         this.currentMemoryUsage = 0;
         this.queuedJobs = new BoundedBuffer<>(100);
@@ -47,22 +51,10 @@ public class WorkerScheduler {
         }
     }
 
-    private JobRequest dequeue() {
-        try {
-            return queuedJobs.take();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public void stop() {
         this.running = false;
         for (Thread thread : threads) {
-            try {
-                thread.join(); // wait for all threads to finish
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            thread.interrupt();
         }
     }
 
@@ -70,37 +62,42 @@ public class WorkerScheduler {
         this.running = true;
         for (int i = 0; i < threads.length; i++) {
             threads[i] = new Thread(() -> {
-                while (running) {
-                    JobRequest jobRequest = dequeue(); // this waits until a job is available
-
-                    if (jobRequest.getMemoryNeeded() > this.maxMemoryCapacity) {
-                        System.err.println("Job " + jobRequest.getJobId() + " requires more memory than the worker can provide");
-                        continue;
-                    }
-
-                    lock.lock();
-                    try {
-                        while (!hasMemoryAvailable(jobRequest.getMemoryNeeded())) {
-                            memoryAvailableCondition.await();
+                try {
+                    while (running) {
+                        JobRequest jobRequest = queuedJobs.take(); // this waits until a job is available
+                        if (jobRequest == null) {
+                            continue;
                         }
 
-                        currentMemoryUsage += jobRequest.getMemoryNeeded();
-                        lock.unlock();
-
-                        JobResult jobResult = jobExecutor.execute(jobRequest);
-                        this.endJobCallback.accept(jobResult);
+                        if (jobRequest.getMemoryNeeded() > this.maxMemoryCapacity) {
+                            this.logger.warn("Job " + jobRequest.getJobId() + " requires more memory than the worker can provide");
+                            continue;
+                        }
 
                         lock.lock();
-                        currentMemoryUsage -= jobRequest.getMemoryNeeded();
+                        try {
+                            while (!hasMemoryAvailable(jobRequest.getMemoryNeeded())) {
+                                memoryAvailableCondition.await();
+                            }
+
+                            currentMemoryUsage += jobRequest.getMemoryNeeded();
+                            lock.unlock();
+
+                            JobResult jobResult = jobExecutor.execute(jobRequest);
+                            this.endJobCallback.accept(jobResult);
+
+                            lock.lock();
+                            currentMemoryUsage -= jobRequest.getMemoryNeeded();
 
                         /* we need to signal all threads because one thread might not
                           have enough memory for its job while another might have */
-                        memoryAvailableCondition.signalAll();
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    } finally {
-                        lock.unlock();
+                            memoryAvailableCondition.signalAll();
+                        } finally {
+                            lock.unlock();
+                        }
                     }
+                } catch (InterruptedException e) {
+                    this.logger.error("Worker thread was interrupted", e);
                 }
             }, "Worker-thread-" + i);
             threads[i].start();
