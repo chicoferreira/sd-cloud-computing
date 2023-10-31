@@ -7,6 +7,7 @@ import sd.cloudcomputing.common.logging.Logger;
 import sd.cloudcomputing.common.logging.impl.StdoutLogger;
 import sd.cloudcomputing.common.logging.impl.ThreadPrefixedLoggerFormat;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -70,23 +71,30 @@ public class Worker {
         this.initServer(port);
 
         try {
+            Socket socket = serverSocket.accept();
+            logger.info("Server connected. Waiting for requests...");
+
+            // get the input stream from the connected socket
             while (running) {
-                Socket socket = serverSocket.accept();
-                logger.info("Server connected. Waiting for requests...");
+                try {
+                    InputStream inputStream = socket.getInputStream();
 
-                // get the input stream from the connected socket
-                InputStream inputStream = socket.getInputStream();
-                ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
-                Object object = objectInputStream.readObject();
-
-                if (object instanceof JobRequest jobRequest) {
-                    this.workerScheduler.queue(jobRequest);
-                } else {
-                    this.logger.warn("Received unknown object: " + object);
+                    ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
+                    Object object = objectInputStream.readObject();
+                    if (object instanceof JobRequest jobRequest) {
+                        this.workerScheduler.queue(jobRequest);
+                    } else {
+                        this.logger.warn("Received unknown object: " + object);
+                    }
+                } catch (EOFException e) {
+                    this.running = false;
+                    logger.info("Server disconnected");
+                } catch (ClassNotFoundException | IOException e) {
+                    logger.error("Couldn't parse object: ", e);
                 }
             }
-        } catch (IOException | ClassNotFoundException e) {
-            logger.error("Failed to read from socket: ", e);
+        } catch (IOException e) {
+            logger.error("Failed to create server: ", e);
         }
     }
 

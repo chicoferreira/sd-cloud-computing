@@ -54,7 +54,12 @@ public class WorkerScheduler {
     public void stop() {
         this.running = false;
         for (Thread thread : threads) {
-            thread.interrupt();
+            try {
+                thread.interrupt();
+                thread.join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -97,7 +102,7 @@ public class WorkerScheduler {
                         }
                     }
                 } catch (InterruptedException e) {
-                    this.logger.error("Worker thread was interrupted", e);
+                    this.logger.info("Worker thread was interrupted");
                 }
             }, "Worker-thread-" + i);
             threads[i].start();
