@@ -3,10 +3,14 @@ package sd.cloudcomputing.common;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import sd.cloudcomputing.common.serialization.Frost;
+import sd.cloudcomputing.common.serialization.SerializationException;
 import sd.cloudcomputing.common.serialization.SerializeInput;
 import sd.cloudcomputing.common.serialization.SerializeOutput;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -20,7 +24,7 @@ class JobRequestSerializationTest {
     }
 
     @Test
-    void testSerialization() {
+    void testSerialization() throws SerializationException {
         JobRequest jobRequest = new JobRequest(0, new byte[]{1, 2, 3, 4, 5}, 500);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();

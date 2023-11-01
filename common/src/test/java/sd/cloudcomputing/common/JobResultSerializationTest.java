@@ -3,6 +3,7 @@ package sd.cloudcomputing.common;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import sd.cloudcomputing.common.serialization.Frost;
+import sd.cloudcomputing.common.serialization.SerializationException;
 import sd.cloudcomputing.common.serialization.SerializeInput;
 import sd.cloudcomputing.common.serialization.SerializeOutput;
 
@@ -23,8 +24,8 @@ class JobResultSerializationTest {
     }
 
     @Test
-    void testSerializationResultSuccess() {
-        JobResult jobResult = JobResult.success(new byte[]{1, 2, 3, 4, 5});
+    void testSerializationResultSuccess() throws SerializationException {
+        JobResult jobResult = JobResult.success(1, new byte[]{1, 2, 3, 4, 5});
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         SerializeOutput output = new SerializeOutput(new DataOutputStream(out));
@@ -39,6 +40,7 @@ class JobResultSerializationTest {
 
         JobResult deserialized = frost.readSerializable(JobResult.class, input);
 
+        assertEquals(1, deserialized.getJobId());
         assertEquals(JobResult.ResultType.SUCCESS, deserialized.getResultType());
         assertEquals(5, deserialized.getData().length);
         assertEquals(1, deserialized.getData()[0]);
@@ -49,8 +51,8 @@ class JobResultSerializationTest {
     }
 
     @Test
-    void testSerializationResultFailure() {
-        JobResult jobResult = JobResult.failure(1, "error");
+    void testSerializationResultFailure() throws SerializationException {
+        JobResult jobResult = JobResult.failure(1, -1, "error");
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         SerializeOutput output = new SerializeOutput(new DataOutputStream(out));
@@ -65,8 +67,9 @@ class JobResultSerializationTest {
 
         JobResult deserialized = frost.readSerializable(JobResult.class, input);
 
+        assertEquals(1, deserialized.getJobId());
         assertEquals(JobResult.ResultType.FAILURE, deserialized.getResultType());
-        assertEquals(1, deserialized.getErrorCode());
+        assertEquals(-1, deserialized.getErrorCode());
         assertEquals("error", deserialized.getErrorMessage());
     }
 }

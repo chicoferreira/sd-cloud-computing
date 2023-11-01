@@ -10,9 +10,9 @@ public class JobExecutor {
     public JobResult execute(JobRequest jobRequest) {
         try {
             byte[] execute = JobFunction.execute(jobRequest.getData());
-            return JobResult.success(execute);
+            return JobResult.success(jobRequest.getJobId(), execute);
         } catch (JobFunctionException e) {
-            return JobResult.failure(e.getCode(), e.getMessage());
+            return JobResult.failure(jobRequest.getJobId(), e.getCode(), e.getMessage());
         }
     }
 }

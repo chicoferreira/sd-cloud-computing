@@ -1,6 +1,9 @@
 package sd.cloudcomputing.worker;
 
 import org.apache.commons.cli.*;
+import sd.cloudcomputing.common.JobRequest;
+import sd.cloudcomputing.common.JobResult;
+import sd.cloudcomputing.common.serialization.Frost;
 
 public class Main {
     public static void main(String[] args) throws ParseException {
@@ -31,7 +34,17 @@ public class Main {
             maxConcurrentJobs = number.intValue();
         }
 
-        Worker worker = new Worker(maxMemoryCapacity, maxConcurrentJobs);
-        worker.run(9900);
+        int port = 9900;
+
+        if (commandLine.getParsedOptionValue("port") instanceof Number number) {
+            port = number.intValue();
+        }
+
+        Frost frost = new Frost();
+        frost.registerSerializer(JobRequest.class, new JobRequest.Serialization());
+        frost.registerSerializer(JobResult.class, new JobResult.Serialization());
+
+        Worker worker = new Worker(frost, maxMemoryCapacity, maxConcurrentJobs);
+        worker.run(port);
     }
 }

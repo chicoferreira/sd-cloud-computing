@@ -1,35 +1,37 @@
 package sd.cloudcomputing.common;
 
-import sd.cloudcomputing.common.serialization.Frost;
-import sd.cloudcomputing.common.serialization.Serialize;
-import sd.cloudcomputing.common.serialization.SerializeInput;
-import sd.cloudcomputing.common.serialization.SerializeOutput;
+import sd.cloudcomputing.common.serialization.*;
 
 public class JobResult {
 
+    private final int jobId;
     private final ResultType resultType;
     private final byte[] data;
     private final int errorCode;
     private final String errorMessage;
 
     public enum ResultType {
-        SUCCESS,
-        FAILURE
+        SUCCESS, FAILURE
     }
 
-    JobResult(ResultType resultType, byte[] data, int errorCode, String errorMessage) {
+    JobResult(int jobId, ResultType resultType, byte[] data, int errorCode, String errorMessage) {
+        this.jobId = jobId;
         this.resultType = resultType;
         this.data = data;
         this.errorCode = errorCode;
         this.errorMessage = errorMessage;
     }
 
-    public static JobResult success(byte[] data) {
-        return new JobResult(ResultType.SUCCESS, data, -1, null);
+    public static JobResult success(int jobId, byte[] data) {
+        return new JobResult(jobId, ResultType.SUCCESS, data, -1, null);
     }
 
-    public static JobResult failure(int errorCode, String errorMessage) {
-        return new JobResult(ResultType.FAILURE, null, errorCode, errorMessage);
+    public static JobResult failure(int jobId, int errorCode, String errorMessage) {
+        return new JobResult(jobId, ResultType.FAILURE, null, errorCode, errorMessage);
+    }
+
+    public int getJobId() {
+        return jobId;
     }
 
     public ResultType getResultType() {
@@ -51,27 +53,32 @@ public class JobResult {
     public static class Serialization implements Serialize<JobResult> {
 
         @Override
-        public JobResult deserialize(SerializeInput input, Frost frost) {
+        public JobResult deserialize(SerializeInput input, Frost frost) throws SerializationException {
             ResultType type = frost.readBoolean(input) ? ResultType.SUCCESS : ResultType.FAILURE;
             return switch (type) {
                 case FAILURE -> {
+                    int jobId = frost.readInt(input);
                     String errorMessage = frost.readString(input);
                     int errorCode = frost.readInt(input);
-                    yield JobResult.failure(errorCode, errorMessage);
+                    yield JobResult.failure(jobId, errorCode, errorMessage);
                 }
-                case SUCCESS -> JobResult.success(frost.readBytes(input));
+                case SUCCESS -> JobResult.success(frost.readInt(input), frost.readBytes(input));
             };
         }
 
         @Override
-        public void serialize(JobResult object, SerializeOutput output, Frost frost) {
+        public void serialize(JobResult object, SerializeOutput output, Frost frost) throws SerializationException {
             frost.writeBoolean(object.getResultType() == ResultType.SUCCESS, output);
             switch (object.getResultType()) {
                 case FAILURE -> {
+                    frost.writeInt(object.getJobId(), output);
                     frost.writeString(object.getErrorMessage(), output);
                     frost.writeInt(object.getErrorCode(), output);
                 }
-                case SUCCESS -> frost.writeBytes(object.getData(), output);
+                case SUCCESS -> {
+                    frost.writeInt(object.getJobId(), output);
+                    frost.writeBytes(object.getData(), output);
+                }
             }
         }
     }

@@ -11,7 +11,7 @@ public class Frost {
 
     private final Map<Class<?>, Serialize<?>> customSerializers = new HashMap<>();
 
-    public void writeInt(int value, SerializeOutput output) {
+    public void writeInt(int value, SerializeOutput output) throws SerializationException {
         try {
             output.writeInt(value);
         } catch (IOException e) {
@@ -19,7 +19,7 @@ public class Frost {
         }
     }
 
-    public void writeLong(long value, SerializeOutput output) {
+    public void writeLong(long value, SerializeOutput output) throws SerializationException {
         try {
             output.writeLong(value);
         } catch (IOException e) {
@@ -27,7 +27,7 @@ public class Frost {
         }
     }
 
-    public void writeString(@NotNull String value, SerializeOutput output) {
+    public void writeString(@NotNull String value, SerializeOutput output) throws SerializationException {
         try {
             output.writeString(value);
         } catch (IOException e) {
@@ -35,7 +35,7 @@ public class Frost {
         }
     }
 
-    public void writeBoolean(boolean value, SerializeOutput output) {
+    public void writeBoolean(boolean value, SerializeOutput output) throws SerializationException {
         try {
             output.writeBoolean(value);
         } catch (IOException e) {
@@ -43,7 +43,7 @@ public class Frost {
         }
     }
 
-    public <T> void writeSerializable(@NotNull T value, Class<T> clazz, SerializeOutput output) {
+    public <T> void writeSerializable(@NotNull T value, Class<T> clazz, SerializeOutput output) throws SerializationException {
         Serialize<T> serializer = getSerializer(clazz);
         if (serializer == null) {
             throw new IllegalArgumentException("No serializer has been registered for class " + clazz.getName());
@@ -51,7 +51,7 @@ public class Frost {
         serializer.serialize(value, output, this);
     }
 
-    public void writeBytes(byte @NotNull [] value, SerializeOutput output) {
+    public void writeBytes(byte @NotNull [] value, SerializeOutput output) throws SerializationException {
         try {
             output.writeBytes(value);
         } catch (IOException e) {
@@ -59,7 +59,7 @@ public class Frost {
         }
     }
 
-    public void flush(SerializeOutput output) {
+    public void flush(SerializeOutput output) throws SerializationException {
         try {
             output.flush();
         } catch (IOException e) {
@@ -67,7 +67,7 @@ public class Frost {
         }
     }
 
-    public int readInt(SerializeInput input) {
+    public int readInt(SerializeInput input) throws SerializationException {
         try {
             return input.readInt();
         } catch (IOException e) {
@@ -75,7 +75,7 @@ public class Frost {
         }
     }
 
-    public long readLong(SerializeInput input) {
+    public long readLong(SerializeInput input) throws SerializationException {
         try {
             return input.readLong();
         } catch (IOException e) {
@@ -83,7 +83,7 @@ public class Frost {
         }
     }
 
-    public String readString(SerializeInput input) {
+    public String readString(SerializeInput input) throws SerializationException {
         try {
             return input.readString();
         } catch (IOException e) {
@@ -91,7 +91,7 @@ public class Frost {
         }
     }
 
-    public boolean readBoolean(SerializeInput input) {
+    public boolean readBoolean(SerializeInput input) throws SerializationException {
         try {
             return input.readBoolean();
         } catch (IOException e) {
@@ -99,7 +99,7 @@ public class Frost {
         }
     }
 
-    public <T> T readSerializable(Class<T> clazz, SerializeInput input) {
+    public <T> T readSerializable(Class<T> clazz, SerializeInput input) throws SerializationException {
         Serialize<T> serializer = getSerializer(clazz);
         if (serializer == null) {
             throw new IllegalArgumentException("No serializer has been registered for class " + clazz.getName());
@@ -107,7 +107,7 @@ public class Frost {
         return serializer.deserialize(input, this);
     }
 
-    public byte @NotNull [] readBytes(SerializeInput input) {
+    public byte @NotNull [] readBytes(SerializeInput input) throws SerializationException {
         try {
             return input.readBytes();
         } catch (IOException e) {

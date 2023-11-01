@@ -113,4 +113,11 @@ public class WorkerScheduler {
         return currentMemoryUsage + memoryNeeded <= maxMemoryCapacity;
     }
 
+    public int getMaxMemoryCapacity() {
+        return maxMemoryCapacity;
+    }
+
+    public int getMaxConcurrentJobs() {
+        return threads.length;
+    }
 }
