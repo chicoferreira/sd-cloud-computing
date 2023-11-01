@@ -10,7 +10,7 @@ public class Main {
         Options options = new Options();
 
         options.addOption("h", "help", false, "Prints this help message");
-        options.addOption("p", "port", true, "Port to listen on");
+        options.addOption("c", "connect", true, "The server to connect on");
         options.addOption("m", "memory-capacity", true, "Maximum memory capacity");
         options.addOption("j", "max-concurrent-jobs", true, "Maximum concurrent jobs");
 
@@ -34,10 +34,17 @@ public class Main {
             maxConcurrentJobs = number.intValue();
         }
 
+        String host = "localhost";
         int port = 9900;
 
-        if (commandLine.getParsedOptionValue("port") instanceof Number number) {
-            port = number.intValue();
+        if (commandLine.getParsedOptionValue("connect") instanceof String address) {
+            String[] split = address.split(":");
+            if (split.length != 2) {
+                throw new RuntimeException("Invalid address");
+            }
+
+            host = split[0];
+            port = Integer.parseInt(split[1]);
         }
 
         Frost frost = new Frost();
@@ -45,6 +52,6 @@ public class Main {
         frost.registerSerializer(JobResult.class, new JobResult.Serialization());
 
         Worker worker = new Worker(frost, maxMemoryCapacity, maxConcurrentJobs);
-        worker.run(port);
+        worker.run(host, port);
     }
 }

@@ -9,9 +9,9 @@ import sd.cloudcomputing.common.logging.impl.ThreadPrefixedLoggerFormat;
 import sd.cloudcomputing.common.serialization.Frost;
 import sd.cloudcomputing.common.serialization.SerializationException;
 import sd.cloudcomputing.common.serialization.SerializeInput;
+import sd.cloudcomputing.common.serialization.SerializeOutput;
 
 import java.io.*;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 
@@ -24,9 +24,6 @@ public class Worker {
     private final Frost frost;
 
     private boolean running;
-    private ServerSocket serverSocket;
-
-    private Thread jobResultHandlerThread;
 
     public Worker(Frost frost, int maxMemoryCapacity, int maxConcurrentJobs) {
         this.frost = frost;
@@ -39,18 +36,13 @@ public class Worker {
         this.queuedJobResults = new BoundedBuffer<>(100);
     }
 
-    public void run(int port) {
+    public void run(String host, int port) {
         setupShutdownHook();
 
         logger.info("Starting worker with max memory capacity of " + workerScheduler.getMaxMemoryCapacity() + " and max concurrent jobs of " + workerScheduler.getMaxConcurrentJobs());
 
-        Thread serverThread = new Thread(() -> runServer(port), "Worker-Server-Thread");
+        Thread serverThread = new Thread(() -> runServer(host, port), "Worker-Server-Thread");
         serverThread.start();
-
-        this.jobResultHandlerThread = new Thread(this::handleJobResults, "Worker-Job-Result-Handler-Thread");
-        jobResultHandlerThread.start();
-
-        this.workerScheduler.start();
 
         try {
             serverThread.join();
@@ -59,26 +51,19 @@ public class Worker {
         }
 
         this.running = false;
-
-        stop();
     }
 
-    private void initServer(int port) {
-        try {
-            this.serverSocket = new ServerSocket(port);
-            logger.info("Worker listening on port " + port);
-        } catch (IOException ex) {
-            logger.error("Couldn't start server in port " + port, ex);
-        }
-    }
-
-    private void runServer(int port) {
+    private void runServer(String host, int port) {
         running = true;
-        this.initServer(port);
 
-        try {
-            Socket socket = serverSocket.accept();
+        logger.info("Connecting to server on " + host + ":" + port);
+        try (Socket socket = new Socket(host, port)) {
             logger.info("Server connected. Waiting for requests...");
+
+            Thread jobResultHandlerThread = new Thread(() -> handleJobResults(socket), "Worker-Job-Result-Handler-Thread");
+            jobResultHandlerThread.start();
+
+            this.workerScheduler.start();
 
             while (running) {
                 try {
@@ -98,17 +83,20 @@ public class Worker {
                     if (e.getCause() instanceof EOFException) {
                         this.running = false;
                         logger.info("Server disconnected");
-                        return;
+                        continue;
                     }
                     if (e.getCause() instanceof SocketException) {
                         this.running = false;
                         logger.error("Socket error", e.getCause());
-                        return;
+                        continue;
                     }
 
                     logger.error("Couldn't parse object: ", e);
                 }
             }
+
+            this.workerScheduler.stop();
+            jobResultHandlerThread.interrupt();
         } catch (IOException e) {
             logger.error("Failed to create server: ", e);
         }
@@ -121,7 +109,7 @@ public class Worker {
         }
     }
 
-    private void handleJobResults() {
+    private void handleJobResults(Socket socket) {
         try {
             while (running) {
                 JobResult jobResult = queuedJobResults.take();
@@ -131,19 +119,15 @@ public class Worker {
                     logger.info("Job succeeded with result: " + jobResult.getData().length + " bytes");
                 }
 
-                // TODO: send result back to server
+                try {
+                    SerializeOutput output = new SerializeOutput(new DataOutputStream(new BufferedOutputStream(socket.getOutputStream())));
+                    frost.writeSerializable(jobResult, JobResult.class, output);
+                    frost.flush(output);
+                } catch (IOException | SerializationException e) {
+                    throw new RuntimeException(e);
+                }
             }
         } catch (InterruptedException ignored) {
-        }
-    }
-
-    private void stop() {
-        try {
-            this.jobResultHandlerThread.interrupt();
-            this.workerScheduler.stop();
-            serverSocket.close();
-        } catch (IOException e) {
-            logger.error("Failed to close server socket", e);
         }
     }
 
