@@ -1,6 +1,7 @@
 package sd.cloudcomputing.common.concurrent;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
@@ -57,6 +58,7 @@ public class SynchronizedList<T> {
             lock.unlock();
         }
     }
+
     public void forEach(Consumer<T> consumer) {
         lock.lock();
         try {
@@ -64,5 +66,17 @@ public class SynchronizedList<T> {
         } finally {
             lock.unlock();
         }
+    }
+
+    public void internalLock() {
+        lock.lock();
+    }
+
+    public void internalUnlock() {
+        lock.unlock();
+    }
+
+    public List<T> getInternalList() {
+        return this.arrayList;
     }
 }

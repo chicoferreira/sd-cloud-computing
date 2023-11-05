@@ -21,22 +21,24 @@ public class WorkerConnection {
     private final Socket socket;
     private final Frost frost;
     private final Consumer<JobResult> handleJobResult;
+    private final Consumer<WorkerConnection> onDisconnect;
     private int maxMemoryCapacity;
     private boolean running;
 
-    private SynchronizedMap<Integer, JobRequest> pendingJobRequests;
+    private final SynchronizedMap<Integer, JobRequest> pendingJobRequests;
 
     private final BoundedBuffer<JobRequest> queuedJobRequests;
     private Thread readThread;
     private Thread writeThread;
 
-    public WorkerConnection(Logger logger, Frost frost, Socket socket, Consumer<JobResult> handleJobResult) {
+    public WorkerConnection(Logger logger, Frost frost, Socket socket, Consumer<JobResult> handleJobResult, Consumer<WorkerConnection> onDisconnect) {
         this.logger = logger;
         this.frost = frost;
         this.socket = socket;
         this.handleJobResult = handleJobResult;
         this.queuedJobRequests = new BoundedBuffer<>(100);
         this.pendingJobRequests = new SynchronizedMap<>();
+        this.onDisconnect = onDisconnect;
     }
 
     public int getMaxMemoryCapacity() {
@@ -45,6 +47,17 @@ public class WorkerConnection {
 
     public int getCurrentEstimatedMemoryUsage() {
         return this.pendingJobRequests.sumValues(JobRequest::getMemoryNeeded);
+    }
+
+    public int getEstimatedFreeMemory() {
+        return this.maxMemoryCapacity - getCurrentEstimatedMemoryUsage();
+    }
+
+    public void queue(JobRequest jobRequest) {
+        try {
+            queuedJobRequests.put(jobRequest);
+        } catch (InterruptedException ignored) {
+        }
     }
 
     private void runRead() {
@@ -65,15 +78,10 @@ public class WorkerConnection {
                 handleJobResult.accept(jobResult);
             }
         } catch (IOException e) {
-            logger.info("Worker disconnected");
-
+            disconnect();
         } catch (SerializationException e) {
             logger.error("Failed to deserialize job result from worker", e);
         }
-    }
-
-    public void queue(JobRequest jobRequest) throws InterruptedException {
-        queuedJobRequests.put(jobRequest);
     }
 
     private void runWrite() {
@@ -92,11 +100,18 @@ public class WorkerConnection {
                 frost.flush(output);
             }
         } catch (IOException e) {
-            logger.info("Worker disconnected");
+            disconnect();
         } catch (SerializationException e) {
             logger.error("Failed to serialize job request to worker", e);
         } catch (InterruptedException ignored) {
         }
+    }
+
+    private void disconnect() {
+        logger.info("Worker disconnected");
+        this.running = false;
+        this.onDisconnect.accept(this);
+        stop();
     }
 
     public void stop() {
@@ -104,6 +119,8 @@ public class WorkerConnection {
 
         this.readThread.interrupt();
         this.writeThread.interrupt();
+
+        this.onDisconnect.accept(this);
     }
 
     public void run() {
@@ -119,14 +136,6 @@ public class WorkerConnection {
 
             this.readThread.start();
             this.writeThread.start();
-
-            try {
-                this.readThread.join();
-                this.writeThread.join();
-            } catch (InterruptedException ignored) {
-            }
-
-
         } catch (SerializationException e) {
             this.logger.error("Failed to deserialize WSHandshakePacket: ", e);
         } catch (IOException e) {
