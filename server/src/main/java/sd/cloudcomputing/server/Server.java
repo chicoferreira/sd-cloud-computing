@@ -38,8 +38,13 @@ public class Server {
 
         this.running = true;
         this.workerConnectionHandler = new Thread(() -> runWorkerConnectionHandler(workerConnectionServerPort), "Worker-Connection-Handler-Thread");
-        workerConnectionHandler.start();
+        this.workerConnectionHandler.start();
 
+        try {
+            this.workerConnectionHandler.join();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
         stop();
     }
 

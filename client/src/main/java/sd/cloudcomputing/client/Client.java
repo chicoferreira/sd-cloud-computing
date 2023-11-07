@@ -11,18 +11,26 @@ import sd.cloudcomputing.client.command.CommandManager;
 import sd.cloudcomputing.common.logging.Console;
 import sd.cloudcomputing.common.logging.impl.DefaultLoggerFormat;
 import sd.cloudcomputing.common.logging.impl.JLineConsole;
+import sd.cloudcomputing.common.protocol.CSAuthPacket;
+import sd.cloudcomputing.common.protocol.SCAuthResult;
+import sd.cloudcomputing.common.serialization.Frost;
+import sd.cloudcomputing.common.serialization.SerializationException;
+import sd.cloudcomputing.common.serialization.SerializeInput;
+import sd.cloudcomputing.common.serialization.SerializeOutput;
 
 import java.io.IOException;
 
 public class Client {
 
     private final CommandManager commandManager;
+    private final Frost frost;
     private Console console;
     private boolean running;
     private ServerConnection serverConnection;
     private Thread serverConnectionThread;
 
-    public Client() {
+    public Client(Frost frost) {
+        this.frost = frost;
         this.commandManager = new CommandManager(this);
     }
 
@@ -59,8 +67,29 @@ public class Client {
         this.serverConnection = new ServerConnection(console);
 
         if (this.serverConnection.connect(ip, port)) {
-            this.serverConnectionThread = new Thread(() -> serverConnection.run(), "Server-Connection-Thread");
-            this.serverConnectionThread.start();
+            String username = console.readInput("Insert your username: ");
+            String password = console.readPassword("Insert your password: ");
+
+            CSAuthPacket authPacket = new CSAuthPacket(username, password);
+
+            try {
+                SerializeOutput serializeOutput = this.serverConnection.writeEnd();
+
+                this.frost.writeSerializable(authPacket, CSAuthPacket.class, serializeOutput);
+                this.frost.flush(serializeOutput);
+
+                SerializeInput serializeInput = this.serverConnection.readEnd();
+
+                SCAuthResult scAuthResult = this.frost.readSerializable(SCAuthResult.class, serializeInput);
+
+                if (scAuthResult.isSuccess()) {
+                    console.info("Successfully authenticated as " + username + " (" + scAuthResult.result() + ")");
+                    this.serverConnectionThread = new Thread(() -> serverConnection.run(), "Server-Connection-Thread");
+                    this.serverConnectionThread.start();
+                }
+            } catch (IOException | SerializationException e) {
+                this.console.error("Error connecting to server: " + e.getMessage());
+            }
         }
     }
 
@@ -75,7 +104,7 @@ public class Client {
     private void runCli() {
         while (this.running) {
             try {
-                String line = console.readInput();
+                String line = console.readInput("client>");
                 handleCommand(line);
             } catch (EndOfFileException | UserInterruptException ignored) {
                 stop();
@@ -113,6 +142,6 @@ public class Client {
                 .terminal(terminal)
                 .build();
 
-        return new JLineConsole(new DefaultLoggerFormat(), reader, "client> ");
+        return new JLineConsole(new DefaultLoggerFormat(), reader);
     }
 }

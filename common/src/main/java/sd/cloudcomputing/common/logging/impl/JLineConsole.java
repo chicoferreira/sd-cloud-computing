@@ -10,17 +10,20 @@ import java.io.IOException;
 public class JLineConsole extends AbstractLogger implements Console {
 
     private final LineReader reader;
-    private final String prompt;
 
-    public JLineConsole(LoggerFormat loggerFormat, LineReader reader, String prompt) {
+    public JLineConsole(LoggerFormat loggerFormat, LineReader reader) {
         super(loggerFormat);
         this.reader = reader;
-        this.prompt = prompt;
     }
 
     @Override
-    public String readInput() {
+    public String readInput(String prompt) {
         return reader.readLine(prompt);
+    }
+
+    @Override
+    public String readPassword(String prompt) {
+        return reader.readLine(prompt, '*');
     }
 
     @Override

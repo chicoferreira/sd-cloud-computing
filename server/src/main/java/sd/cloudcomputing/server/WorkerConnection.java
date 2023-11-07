@@ -127,9 +127,9 @@ public class WorkerConnection {
         try {
             SerializeInput input = new SerializeInput(new DataInputStream(new BufferedInputStream(socket.getInputStream())));
             WSHandshakePacket wsHandshakePacket = frost.readSerializable(WSHandshakePacket.class, input);
-            logger.info("Worker connected with max memory capacity of " + wsHandshakePacket.getMaxMemoryCapacity());
+            logger.info("Worker connected with max memory capacity of " + wsHandshakePacket.maxMemoryCapacity());
 
-            this.maxMemoryCapacity = wsHandshakePacket.getMaxMemoryCapacity();
+            this.maxMemoryCapacity = wsHandshakePacket.maxMemoryCapacity();
 
             this.readThread = new Thread(this::runRead, Thread.currentThread().getName() + "-read");
             this.writeThread = new Thread(this::runWrite, Thread.currentThread().getName() + "-write");

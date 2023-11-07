@@ -99,7 +99,7 @@ public class Frost {
         }
     }
 
-    public <T> T readSerializable(Class<T> clazz, SerializeInput input) throws SerializationException {
+    public <T> @NotNull T readSerializable(Class<T> clazz, SerializeInput input) throws SerializationException {
         Serialize<T> serializer = getSerializer(clazz);
         if (serializer == null) {
             throw new IllegalArgumentException("No serializer has been registered for class " + clazz.getName());
@@ -120,7 +120,7 @@ public class Frost {
         return (Serialize<T>) customSerializers.get(clazz);
     }
 
-    public <T> void registerSerializer(Class<T> clazz, Serialize<T> serializer) {
+    public <T> void registerSerializer(Class<T> clazz, @NotNull Serialize<T> serializer) {
         customSerializers.put(clazz, serializer);
     }
 

@@ -1,5 +1,6 @@
 package sd.cloudcomputing.common;
 
+import org.jetbrains.annotations.NotNull;
 import sd.cloudcomputing.common.serialization.*;
 
 public class JobResult {
@@ -53,7 +54,7 @@ public class JobResult {
     public static class Serialization implements Serialize<JobResult> {
 
         @Override
-        public JobResult deserialize(SerializeInput input, Frost frost) throws SerializationException {
+        public @NotNull JobResult deserialize(SerializeInput input, Frost frost) throws SerializationException {
             ResultType type = frost.readBoolean(input) ? ResultType.SUCCESS : ResultType.FAILURE;
             return switch (type) {
                 case FAILURE -> {

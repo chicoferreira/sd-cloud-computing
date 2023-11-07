@@ -1,8 +1,10 @@
 package sd.cloudcomputing.client;
 
 import sd.cloudcomputing.common.logging.Logger;
+import sd.cloudcomputing.common.serialization.SerializeInput;
+import sd.cloudcomputing.common.serialization.SerializeOutput;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 
 public class ServerConnection {
@@ -18,7 +20,7 @@ public class ServerConnection {
 
     public boolean connect(String ip, int port) {
         try {
-            this.socket = new Socket("localhost", 8080);
+            this.socket = new Socket(ip, port);
             logger.info("Connected to server at " + socket.getInetAddress().getHostAddress() + ":" + socket.getPort());
             return true;
         } catch (Exception e) {
@@ -43,6 +45,18 @@ public class ServerConnection {
 
     public void enqueue(String job) {
         logger.info("Enqueued job: " + job);
+    }
+
+    public SerializeInput readEnd() throws IOException {
+        DataInputStream inputStream = new DataInputStream(new BufferedInputStream(this.socket.getInputStream()));
+
+        return new SerializeInput(inputStream);
+    }
+
+    public SerializeOutput writeEnd() throws IOException {
+        DataOutputStream outputStream = new DataOutputStream(new BufferedOutputStream(this.socket.getOutputStream()));
+
+        return new SerializeOutput(outputStream);
     }
 
     public boolean isConnected() {

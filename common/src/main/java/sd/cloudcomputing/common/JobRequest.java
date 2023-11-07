@@ -1,5 +1,6 @@
 package sd.cloudcomputing.common;
 
+import org.jetbrains.annotations.NotNull;
 import sd.cloudcomputing.common.serialization.*;
 
 public class JobRequest {
@@ -29,7 +30,7 @@ public class JobRequest {
     public static class Serialization implements Serialize<JobRequest> {
 
         @Override
-        public JobRequest deserialize(SerializeInput input, Frost frost) throws SerializationException {
+        public @NotNull JobRequest deserialize(SerializeInput input, Frost frost) throws SerializationException {
             int jobId = frost.readInt(input);
             byte[] bytes = frost.readBytes(input);
             int memoryNeeded = frost.readInt(input);
