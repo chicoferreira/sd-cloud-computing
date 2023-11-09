@@ -1,7 +1,12 @@
 package sd.cloudcomputing.common;
 
 import org.jetbrains.annotations.NotNull;
-import sd.cloudcomputing.common.serialization.*;
+import sd.cloudcomputing.common.serialization.Frost;
+import sd.cloudcomputing.common.serialization.Serialize;
+import sd.cloudcomputing.common.serialization.SerializeInput;
+import sd.cloudcomputing.common.serialization.SerializeOutput;
+
+import java.io.IOException;
 
 public class JobResult {
 
@@ -54,7 +59,7 @@ public class JobResult {
     public static class Serialization implements Serialize<JobResult> {
 
         @Override
-        public @NotNull JobResult deserialize(SerializeInput input, Frost frost) throws SerializationException {
+        public @NotNull JobResult deserialize(SerializeInput input, Frost frost) throws IOException {
             ResultType type = frost.readBoolean(input) ? ResultType.SUCCESS : ResultType.FAILURE;
             return switch (type) {
                 case FAILURE -> {
@@ -68,7 +73,7 @@ public class JobResult {
         }
 
         @Override
-        public void serialize(JobResult object, SerializeOutput output, Frost frost) throws SerializationException {
+        public void serialize(JobResult object, SerializeOutput output, Frost frost) throws IOException {
             frost.writeBoolean(object.getResultType() == ResultType.SUCCESS, output);
             switch (object.getResultType()) {
                 case FAILURE -> {

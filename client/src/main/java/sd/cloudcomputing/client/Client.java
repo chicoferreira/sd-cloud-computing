@@ -26,8 +26,7 @@ public class Client {
     private final Frost frost;
     private Console console;
     private boolean running;
-    private ServerConnection serverConnection;
-    private Thread serverConnectionThread;
+    private ServerConnection currentConnection;
 
     public Client(Frost frost) {
         this.frost = frost;
@@ -64,28 +63,32 @@ public class Client {
             console.info("Already connected to a server");
         }
 
-        this.serverConnection = new ServerConnection(console);
+        ServerConnection serverConnection = new ServerConnection(console);
 
-        if (this.serverConnection.connect(ip, port)) {
+        if (serverConnection.connect(ip, port)) {
             String username = console.readInput("Insert your username: ");
             String password = console.readPassword("Insert your password: ");
 
             CSAuthPacket authPacket = new CSAuthPacket(username, password);
 
             try {
-                SerializeOutput serializeOutput = this.serverConnection.writeEnd();
+                SerializeOutput serializeOutput = serverConnection.writeEnd();
 
                 this.frost.writeSerializable(authPacket, CSAuthPacket.class, serializeOutput);
                 this.frost.flush(serializeOutput);
 
-                SerializeInput serializeInput = this.serverConnection.readEnd();
+                SerializeInput serializeInput = serverConnection.readEnd();
 
                 SCAuthResult scAuthResult = this.frost.readSerializable(SCAuthResult.class, serializeInput);
 
                 if (scAuthResult.isSuccess()) {
                     console.info("Successfully authenticated as " + username + " (" + scAuthResult.result() + ")");
-                    this.serverConnectionThread = new Thread(() -> serverConnection.run(), "Server-Connection-Thread");
-                    this.serverConnectionThread.start();
+                    Thread serverConnectionThread = new Thread(serverConnection::run, "Server-Connection-Thread");
+                    serverConnectionThread.start();
+                    this.currentConnection = serverConnection;
+                } else {
+                    console.info("Failed to authenticate: " + scAuthResult.result());
+                    serverConnection.close();
                 }
             } catch (IOException | SerializationException e) {
                 this.console.error("Error connecting to server: " + e.getMessage());
@@ -94,11 +97,11 @@ public class Client {
     }
 
     public ServerConnection getCurrentServerConnection() {
-        return serverConnection;
+        return currentConnection;
     }
 
     public boolean isConnected() {
-        return serverConnection != null && serverConnection.isConnected();
+        return currentConnection != null && currentConnection.isConnected();
     }
 
     private void runCli() {

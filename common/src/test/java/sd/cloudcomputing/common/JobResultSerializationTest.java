@@ -7,10 +7,7 @@ import sd.cloudcomputing.common.serialization.SerializationException;
 import sd.cloudcomputing.common.serialization.SerializeInput;
 import sd.cloudcomputing.common.serialization.SerializeOutput;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -24,7 +21,7 @@ class JobResultSerializationTest {
     }
 
     @Test
-    void testSerializationResultSuccess() throws SerializationException {
+    void testSerializationResultSuccess() throws SerializationException, IOException {
         JobResult jobResult = JobResult.success(1, new byte[]{1, 2, 3, 4, 5});
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -51,7 +48,7 @@ class JobResultSerializationTest {
     }
 
     @Test
-    void testSerializationResultFailure() throws SerializationException {
+    void testSerializationResultFailure() throws SerializationException, IOException {
         JobResult jobResult = JobResult.failure(1, -1, "error");
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();

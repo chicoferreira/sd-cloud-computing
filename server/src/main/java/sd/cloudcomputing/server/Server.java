@@ -24,13 +24,18 @@ public class Server {
     private boolean running;
 
     private final SynchronizedList<WorkerConnection> workerConnections;
+    private final SynchronizedList<ClientConnection> clientConnections;
 
     private Thread workerConnectionHandler;
+    private final ClientManager clientManager;
+    private Thread clientConnectionHandler;
 
     public Server(Frost frost) {
         this.frost = frost;
         this.logger = new StdoutLogger(new ThreadPrefixedLoggerFormat());
         this.workerConnections = new SynchronizedList<>();
+        this.clientConnections = new SynchronizedList<>();
+        this.clientManager = new ClientManager();
     }
 
     public void run(int serverPort, int workerConnectionServerPort) {
@@ -39,6 +44,10 @@ public class Server {
         this.running = true;
         this.workerConnectionHandler = new Thread(() -> runWorkerConnectionHandler(workerConnectionServerPort), "Worker-Connection-Handler-Thread");
         this.workerConnectionHandler.start();
+
+        this.clientConnectionHandler = new Thread(() -> runClientConnectionHandler(serverPort), "Client-Connection-Handler-Thread");
+        this.clientConnectionHandler.start();
+
 
         try {
             this.workerConnectionHandler.join();
@@ -110,6 +119,39 @@ public class Server {
         }
     }
 
+    // TODO: deduplicar este método com o de cima
+    private void runClientConnectionHandler(int clientServerPort) {
+        try (ServerSocket serverSocket = new ServerSocket(clientServerPort)) {
+            logger.info("Listening for client connections on port " + clientServerPort + "...");
+            SynchronizedList<Thread> pendingConnections = new SynchronizedList<>();
+            int currentConnectionId = 0;
+            while (this.running) {
+                try {
+                    Socket clientSocket = serverSocket.accept();
+                    logger.info("Received connection from client " + clientSocket.getInetAddress() + ":" + clientSocket.getPort() + ". Waiting for authentication...");
+                    Thread connectionThread = new Thread(() -> {
+                        ClientConnection clientConnection = new ClientConnection(this.logger, clientSocket, this.frost, this.clientManager);
+                        clientConnection.run();
+
+                        this.clientConnections.add(clientConnection);
+                    }, "Client-Connection-Thread-" + currentConnectionId++); // Only this thread increments the id, no need to synchronize
+
+                    pendingConnections.add(connectionThread);
+
+                    connectionThread.start();
+                } catch (SocketException e) {
+                    logger.error("Socket error", e);
+                    this.running = false;
+                }
+            }
+
+            logger.info("Interrupting pending connections...");
+            pendingConnections.forEach(Thread::interrupt);
+        } catch (IOException e) {
+            logger.error("Failed to listen server at port " + clientServerPort, e);
+        }
+    }
+
     /**
      * Called when a worker disconnects
      */
@@ -137,6 +179,14 @@ public class Server {
         this.running = false;
         this.workerConnections.forEach(WorkerConnection::stop);
         this.workerConnectionHandler.interrupt();
+        this.clientConnections.forEach(clientConnection -> {
+            try {
+                clientConnection.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        this.clientConnectionHandler.interrupt();
     }
 
 }

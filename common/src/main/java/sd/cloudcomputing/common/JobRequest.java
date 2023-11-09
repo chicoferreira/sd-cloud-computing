@@ -1,7 +1,12 @@
 package sd.cloudcomputing.common;
 
 import org.jetbrains.annotations.NotNull;
-import sd.cloudcomputing.common.serialization.*;
+import sd.cloudcomputing.common.serialization.Frost;
+import sd.cloudcomputing.common.serialization.Serialize;
+import sd.cloudcomputing.common.serialization.SerializeInput;
+import sd.cloudcomputing.common.serialization.SerializeOutput;
+
+import java.io.IOException;
 
 public class JobRequest {
 
@@ -30,7 +35,7 @@ public class JobRequest {
     public static class Serialization implements Serialize<JobRequest> {
 
         @Override
-        public @NotNull JobRequest deserialize(SerializeInput input, Frost frost) throws SerializationException {
+        public @NotNull JobRequest deserialize(SerializeInput input, Frost frost) throws IOException {
             int jobId = frost.readInt(input);
             byte[] bytes = frost.readBytes(input);
             int memoryNeeded = frost.readInt(input);
@@ -39,7 +44,7 @@ public class JobRequest {
         }
 
         @Override
-        public void serialize(JobRequest object, SerializeOutput output, Frost frost) throws SerializationException {
+        public void serialize(JobRequest object, SerializeOutput output, Frost frost) throws IOException {
             frost.writeInt(object.getJobId(), output);
             frost.writeBytes(object.getData(), output);
             frost.writeInt(object.getMemoryNeeded(), output);
