@@ -1,22 +1,22 @@
 package sd.cloudcomputing.client.command;
 
-import sd.cloudcomputing.client.Client;
+import sd.cloudcomputing.client.Application;
 import sd.cloudcomputing.common.logging.Logger;
 
 import java.util.OptionalInt;
 
 public class ConnectCommand extends AbstractCommand {
 
-    private final Client client;
+    private final Application application;
 
-    public ConnectCommand(Client client) {
+    public ConnectCommand(Application application) {
         super("connect", "<host> <port>");
-        this.client = client;
+        this.application = application;
     }
 
     @Override
     public void execute(Logger logger, String[] args) {
-        if (client.isConnected()) {
+        if (application.isConnected()) {
             logger.info("Already connected. Use disconnect to disconnect.");
             return;
         }
@@ -33,6 +33,6 @@ public class ConnectCommand extends AbstractCommand {
             return;
         }
 
-        client.connect(host, port.getAsInt());
+        application.connect(host, port.getAsInt());
     }
 }

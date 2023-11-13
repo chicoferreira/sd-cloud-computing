@@ -1,105 +1,60 @@
 package sd.cloudcomputing.server;
 
+import org.jetbrains.annotations.Nullable;
+import sd.cloudcomputing.common.AbstractConnection;
+import sd.cloudcomputing.common.concurrent.BoundedBuffer;
 import sd.cloudcomputing.common.logging.Logger;
 import sd.cloudcomputing.common.protocol.CSAuthPacket;
+import sd.cloudcomputing.common.protocol.GenericPacket;
 import sd.cloudcomputing.common.protocol.SCAuthResult;
-import sd.cloudcomputing.common.serialization.*;
+import sd.cloudcomputing.common.serialization.Frost;
+import sd.cloudcomputing.common.serialization.SerializationException;
+import sd.cloudcomputing.common.serialization.SerializeInput;
+import sd.cloudcomputing.common.serialization.SerializeOutput;
 import sd.cloudcomputing.common.util.AuthenticateResult;
 
 import java.io.IOException;
 import java.net.Socket;
 
-public class ClientConnection {
+public class ClientConnection extends AbstractConnection<GenericPacket, GenericPacket> {
 
-    private final Logger logger;
-    private final FrostSocket frostSocket;
-    private final Frost frost;
     private final ClientManager clientManager;
-    private boolean running;
-    private Thread readThread;
-    private Thread writeThread;
     private Client client;
 
-    public ClientConnection(Logger logger, Socket socket, Frost frost, ClientManager clientManager) {
-        this.logger = logger;
-        this.frostSocket = new FrostSocket(socket);
-        this.frost = frost;
+    public ClientConnection(Logger logger, Frost frost, ClientManager clientManager, Socket socket) {
+        super(GenericPacket.class, GenericPacket.class, logger, new BoundedBuffer<>(100), frost);
         this.clientManager = clientManager;
+        hookSocket(socket);
     }
 
-    public SerializeInput readEnd() throws IOException {
-        return this.frostSocket.readEnd();
+    public @Nullable Client acceptLogin() throws IOException, SerializationException {
+        SerializeInput serializeInput = super.readEnd();
+
+        CSAuthPacket csAuthPacket = super.getFrost().readSerializable(CSAuthPacket.class, serializeInput);
+        AuthenticateResult authenticateResult = clientManager.authenticateClient(csAuthPacket.getUsername(), csAuthPacket.getPassword());
+        SCAuthResult scAuthResult = new SCAuthResult(authenticateResult);
+
+        SerializeOutput serializeOutput = writeEnd();
+        super.getFrost().writeSerializable(scAuthResult, SCAuthResult.class, serializeOutput);
+        super.getFrost().flush(serializeOutput);
+
+        if (authenticateResult.isSuccess()) {
+            this.client = clientManager.getClient(csAuthPacket.getUsername());
+            return this.client;
+        }
+
+        return null;
     }
 
-    public SerializeOutput writeEnd() throws IOException {
-        return this.frostSocket.writeEnd();
+    @Override
+    public void handlePacket(GenericPacket packet) {
+        super.getLogger().info("Received packet " + packet.content().getClass().getSimpleName());
     }
 
-    public void close() throws IOException {
-        this.frostSocket.close();
-    }
-
-    public void run() {
-        this.running = true;
-
-        try {
-            SerializeInput serializeInput = readEnd();
-
-            CSAuthPacket csAuthPacket = frost.readSerializable(CSAuthPacket.class, serializeInput);
-            AuthenticateResult authenticateResult = clientManager.authenticateClient(csAuthPacket.getUsername(), csAuthPacket.getPassword());
-            SCAuthResult scAuthResult = new SCAuthResult(authenticateResult);
-
-            SerializeOutput serializeOutput = writeEnd();
-            frost.writeSerializable(scAuthResult, SCAuthResult.class, serializeOutput);
-            frost.flush(serializeOutput);
-
-            if (scAuthResult.isSuccess()) {
-                logger.info("Client " + csAuthPacket.getUsername() + " successfully authenticated");
-
-                this.client = clientManager.getClient(csAuthPacket.getUsername());
-
-                this.readThread = new Thread(this::runRead, "Client-Read-Thread");
-                this.writeThread = new Thread(this::runWrite, "Client-Write-Thread");
-
-                this.readThread.start();
-                this.writeThread.start();
-            } else {
-                logger.info("Client " + csAuthPacket.getUsername() + " failed to authenticate");
-                close();
-            }
-        } catch (IOException e) {
-            logger.error("Error while reading from client socket: " + e.getMessage());
-        } catch (SerializationException e) {
-            logger.error("Error while deserializing packet: " + e.getMessage());
+    @Override
+    public void onDisconnect() {
+        if (client != null) {
+            super.getLogger().info("Client " + client.getName() + " disconnected");
         }
     }
-
-    public void runRead() {
-        this.running = true;
-
-        try {
-            while (running) {
-                SerializeInput serializeInput = readEnd();
-                int i = frost.readInt(serializeInput); // block reading
-                logger.info("Received " + i + " bytes from client");
-            }
-        } catch (IOException e) {
-            logger.error("Error while reading from client socket: " + e.getMessage());
-            disconnect();
-        }
-    }
-
-    private void disconnect() {
-        logger.info("Client " + client.getName() + " disconnected");
-        this.running = false;
-        try {
-            close();
-        } catch (IOException e) {
-            logger.error("Failed to close client socket", e);
-        }
-    }
-
-    public void runWrite() {
-    }
-
 }

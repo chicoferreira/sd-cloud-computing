@@ -10,6 +10,7 @@ import java.io.IOException;
 
 public class JobRequest {
 
+    public static final int PACKET_ID = 1;
     private final int jobId;
     private final byte[] data;
     private final int memoryNeeded;
