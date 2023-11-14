@@ -13,7 +13,6 @@ import sd.cloudcomputing.common.serialization.SerializeOutput;
 
 import java.io.*;
 import java.net.Socket;
-import java.net.SocketException;
 
 public class Worker {
 
@@ -73,24 +72,13 @@ public class Worker {
 
                     SerializeInput serializeInput = new SerializeInput(dataInputStream);
                     JobRequest jobRequest = frost.readSerializable(JobRequest.class, serializeInput);
-                    if (jobRequest == null) {
-                        logger.warn("Received unkwown bytes.");
-                        continue;
-                    }
-                    logger.info("Received job request with id " + jobRequest.getJobId() + " and " + jobRequest.getData().length + " bytes of data");
-                    workerScheduler.queue(jobRequest);
-                } catch (SerializationException e) {
-                    if (e.getCause() instanceof EOFException) {
-                        this.running = false;
-                        logger.info("Server disconnected");
-                        continue;
-                    }
-                    if (e.getCause() instanceof SocketException) {
-                        this.running = false;
-                        logger.error("Socket error", e.getCause());
-                        continue;
-                    }
 
+                    logger.info("Received job request with id " + jobRequest.jobId() + " and " + jobRequest.data().length + " bytes of data");
+                    workerScheduler.queue(jobRequest);
+                } catch (IOException e) {
+                    this.running = false;
+                    logger.info("Server disconnected");
+                } catch (SerializationException e) {
                     logger.error("Couldn't parse object: ", e);
                 }
             }

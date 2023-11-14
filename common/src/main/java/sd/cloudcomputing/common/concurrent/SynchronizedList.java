@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
+import java.util.function.ToIntFunction;
 
 public class SynchronizedList<T> {
 
@@ -63,6 +64,24 @@ public class SynchronizedList<T> {
         lock.lock();
         try {
             this.arrayList.forEach(consumer);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public int sum(ToIntFunction<T> toIntFunction) {
+        lock.lock();
+        try {
+            return this.arrayList.stream().mapToInt(toIntFunction).sum();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public int max(ToIntFunction<T> toIntFunction) {
+        lock.lock();
+        try {
+            return this.arrayList.stream().mapToInt(toIntFunction).max().orElse(0);
         } finally {
             lock.unlock();
         }

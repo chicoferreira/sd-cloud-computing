@@ -1,6 +1,8 @@
 package sd.cloudcomputing.client;
 
 import sd.cloudcomputing.common.AbstractConnection;
+import sd.cloudcomputing.common.JobRequest;
+import sd.cloudcomputing.common.concurrent.SynchronizedInteger;
 import sd.cloudcomputing.common.logging.Logger;
 import sd.cloudcomputing.common.protocol.CSAuthPacket;
 import sd.cloudcomputing.common.protocol.GenericPacket;
@@ -16,8 +18,10 @@ import java.net.Socket;
 
 public class ServerConnection extends AbstractConnection<GenericPacket, GenericPacket> {
 
-    public ServerConnection(Logger logger, Frost frost, ClientPacketDispatcher scheduler) {
-        super(GenericPacket.class, GenericPacket.class, logger, scheduler, frost);
+    private final SynchronizedInteger currentJobId = new SynchronizedInteger(0);
+
+    public ServerConnection(Logger logger, Frost frost) {
+        super(GenericPacket.class, GenericPacket.class, logger, frost);
     }
 
     public boolean connect(String ip, int port) {
@@ -44,6 +48,15 @@ public class ServerConnection extends AbstractConnection<GenericPacket, GenericP
         SCAuthResult scAuthResult = super.getFrost().readSerializable(SCAuthResult.class, serializeInput);
 
         return scAuthResult.result();
+    }
+
+    public int scheduleJob(byte[] bytes, int memory) {
+        int jobId = currentJobId.getAndIncrement();
+
+        JobRequest jobRequest = new JobRequest(jobId, bytes, memory);
+        super.enqueuePacket(new GenericPacket(JobRequest.PACKET_ID, jobRequest)); // TODO: refactor this api
+
+        return jobId;
     }
 
     @Override

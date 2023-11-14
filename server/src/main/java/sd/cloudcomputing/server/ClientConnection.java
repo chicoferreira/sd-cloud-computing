@@ -2,7 +2,6 @@ package sd.cloudcomputing.server;
 
 import org.jetbrains.annotations.Nullable;
 import sd.cloudcomputing.common.AbstractConnection;
-import sd.cloudcomputing.common.concurrent.BoundedBuffer;
 import sd.cloudcomputing.common.logging.Logger;
 import sd.cloudcomputing.common.protocol.CSAuthPacket;
 import sd.cloudcomputing.common.protocol.GenericPacket;
@@ -19,11 +18,13 @@ import java.net.Socket;
 public class ClientConnection extends AbstractConnection<GenericPacket, GenericPacket> {
 
     private final ClientManager clientManager;
+    private final ClientPacketHandler clientPacketHandler;
     private Client client;
 
-    public ClientConnection(Logger logger, Frost frost, ClientManager clientManager, Socket socket) {
-        super(GenericPacket.class, GenericPacket.class, logger, new BoundedBuffer<>(100), frost);
+    public ClientConnection(Logger logger, Frost frost, ClientManager clientManager, Socket socket, ClientPacketHandler clientPacketHandler) {
+        super(GenericPacket.class, GenericPacket.class, logger, frost);
         this.clientManager = clientManager;
+        this.clientPacketHandler = clientPacketHandler;
         hookSocket(socket);
     }
 
@@ -48,7 +49,11 @@ public class ClientConnection extends AbstractConnection<GenericPacket, GenericP
 
     @Override
     public void handlePacket(GenericPacket packet) {
-        super.getLogger().info("Received packet " + packet.content().getClass().getSimpleName());
+        clientPacketHandler.handlePacket(this, packet);
+    }
+
+    public Client getClient() {
+        return client;
     }
 
     @Override

@@ -1,19 +1,20 @@
 package sd.cloudcomputing.client.command;
 
-import sd.cloudcomputing.client.ClientPacketDispatcher;
+import sd.cloudcomputing.client.Application;
+import sd.cloudcomputing.client.ServerConnection;
 import sd.cloudcomputing.common.logging.Logger;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public class RunCommand extends AbstractCommand {
+public class JobCommand extends AbstractCommand {
 
-    private final ClientPacketDispatcher packetDispatcher;
+    private final Application application;
 
-    public RunCommand(ClientPacketDispatcher packetDispatcher) {
-        super("run", "<file> <memory>");
-        this.packetDispatcher = packetDispatcher;
+    public JobCommand(Application application) {
+        super("job", "<file> <memory>");
+        this.application = application;
     }
 
     private static byte[] getFileBytes(String[] args) throws IOException {
@@ -44,12 +45,16 @@ public class RunCommand extends AbstractCommand {
             return;
         }
 
-        try {
-            int jobId = packetDispatcher.scheduleJob(bytes, memory);
-            logger.info("Scheduled job with id " + jobId);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+        boolean connected = application.isConnected();
+        if (!connected) {
+            logger.error("Not connected to server");
+            return;
         }
+
+        ServerConnection currentServerConnection = application.getCurrentServerConnection();
+
+        int jobId = currentServerConnection.scheduleJob(bytes, memory);
+        logger.info("Scheduled job with id " + jobId);
     }
 
 }

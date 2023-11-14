@@ -3,7 +3,6 @@ package sd.cloudcomputing.server;
 import sd.cloudcomputing.common.AbstractConnection;
 import sd.cloudcomputing.common.JobRequest;
 import sd.cloudcomputing.common.JobResult;
-import sd.cloudcomputing.common.concurrent.BoundedBuffer;
 import sd.cloudcomputing.common.concurrent.SynchronizedMap;
 import sd.cloudcomputing.common.logging.Logger;
 import sd.cloudcomputing.common.protocol.WSHandshakePacket;
@@ -17,10 +16,12 @@ import java.net.Socket;
 public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> {
 
     private final SynchronizedMap<Integer, JobRequest> pendingJobRequests;
+    private final ConnectedWorkerManager connectedWorkerManager;
     private int maxMemoryCapacity;
 
-    public WorkerConnection(Logger logger, Frost frost, Socket socket) {
-        super(JobRequest.class, JobResult.class, logger, new BoundedBuffer<>(100), frost);
+    public WorkerConnection(Logger logger, Frost frost, Socket socket, ConnectedWorkerManager connectedWorkerManager) {
+        super(JobRequest.class, JobResult.class, logger, frost);
+        this.connectedWorkerManager = connectedWorkerManager;
         hookSocket(socket);
         this.pendingJobRequests = new SynchronizedMap<>();
     }
@@ -30,7 +31,7 @@ public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> 
     }
 
     public int getCurrentEstimatedMemoryUsage() {
-        return this.pendingJobRequests.sumValues(JobRequest::getMemoryNeeded);
+        return this.pendingJobRequests.sumValues(JobRequest::memoryNeeded);
     }
 
     public int getEstimatedFreeMemory() {
@@ -50,9 +51,9 @@ public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> 
     @Override
     public JobRequest getNextPacketToWrite() throws InterruptedException {
         JobRequest jobRequest = super.getNextPacketToWrite();
-        pendingJobRequests.put(jobRequest.getJobId(), jobRequest);
+        pendingJobRequests.put(jobRequest.jobId(), jobRequest);
 
-        super.getLogger().info("Sending job request with id " + jobRequest.getJobId() + " and " + jobRequest.getData().length + " bytes of data");
+        super.getLogger().info("Sending job request with id " + jobRequest.jobId() + " and " + jobRequest.data().length + " bytes of data");
         return jobRequest;
     }
 
@@ -67,5 +68,10 @@ public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> 
     @Override
     public void onDisconnect() {
         super.getLogger().info("Worker disconnected");
+        connectedWorkerManager.notifyDisconnect(this);
+    }
+
+    public int getAmountOfJobsRunning() {
+        return pendingJobRequests.size();
     }
 }

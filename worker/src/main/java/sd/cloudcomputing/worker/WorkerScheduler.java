@@ -74,25 +74,25 @@ public class WorkerScheduler {
                             continue;
                         }
 
-                        if (jobRequest.getMemoryNeeded() > this.maxMemoryCapacity) {
-                            this.logger.warn("Job " + jobRequest.getJobId() + " requires more memory than the worker can provide");
+                        if (jobRequest.memoryNeeded() > this.maxMemoryCapacity) {
+                            this.logger.warn("Job " + jobRequest.jobId() + " requires more memory than the worker can provide");
                             continue;
                         }
 
                         lock.lock();
                         try {
-                            while (!hasMemoryAvailable(jobRequest.getMemoryNeeded())) {
+                            while (!hasMemoryAvailable(jobRequest.memoryNeeded())) {
                                 memoryAvailableCondition.await();
                             }
 
-                            currentMemoryUsage += jobRequest.getMemoryNeeded();
+                            currentMemoryUsage += jobRequest.memoryNeeded();
                             lock.unlock();
 
                             JobResult jobResult = jobExecutor.execute(jobRequest);
                             this.endJobCallback.accept(jobResult);
 
                             lock.lock();
-                            currentMemoryUsage -= jobRequest.getMemoryNeeded();
+                            currentMemoryUsage -= jobRequest.memoryNeeded();
 
                         /* we need to signal all threads because one thread might not
                           have enough memory for its job while another might have */

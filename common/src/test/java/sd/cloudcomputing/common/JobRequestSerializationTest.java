@@ -37,14 +37,14 @@ class JobRequestSerializationTest {
 
         JobRequest deserialized = frost.readSerializable(JobRequest.class, input);
 
-        assertEquals(0, deserialized.getJobId());
-        assertEquals(5, deserialized.getData().length);
-        assertEquals(1, deserialized.getData()[0]);
-        assertEquals(2, deserialized.getData()[1]);
-        assertEquals(3, deserialized.getData()[2]);
-        assertEquals(4, deserialized.getData()[3]);
-        assertEquals(5, deserialized.getData()[4]);
-        assertEquals(500, deserialized.getMemoryNeeded());
+        assertEquals(0, deserialized.jobId());
+        assertEquals(5, deserialized.data().length);
+        assertEquals(1, deserialized.data()[0]);
+        assertEquals(2, deserialized.data()[1]);
+        assertEquals(3, deserialized.data()[2]);
+        assertEquals(4, deserialized.data()[3]);
+        assertEquals(5, deserialized.data()[4]);
+        assertEquals(500, deserialized.memoryNeeded());
     }
 
 }

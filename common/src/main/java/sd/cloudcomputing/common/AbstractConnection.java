@@ -19,12 +19,12 @@ public abstract class AbstractConnection<W, R> {
     private Thread writeThread;
     private Thread readThread;
 
-    public AbstractConnection(Class<W> writePacketClass, Class<R> readPacketClass, Logger logger, BoundedBuffer<W> writeQueue, Frost frost) {
+    public AbstractConnection(Class<W> writePacketClass, Class<R> readPacketClass, Logger logger, Frost frost) {
         this.writePacketClass = writePacketClass;
         this.readPacketClass = readPacketClass;
         this.logger = logger;
-        this.writeQueue = writeQueue;
         this.frost = frost;
+        this.writeQueue = new BoundedBuffer<>(100);
     }
 
     protected Frost getFrost() {
@@ -54,8 +54,8 @@ public abstract class AbstractConnection<W, R> {
     public void startReadWrite() {
         this.running = true;
 
-        this.readThread = new Thread(this::runRead);
-        this.writeThread = new Thread(this::runWrite);
+        this.readThread = new Thread(this::runRead, Thread.currentThread().getName() + "-Read-Thread");
+        this.writeThread = new Thread(this::runWrite, Thread.currentThread().getName() + "-Write-Thread");
 
         this.readThread.start();
         this.writeThread.start();
@@ -75,6 +75,14 @@ public abstract class AbstractConnection<W, R> {
         } catch (IOException e) {
             this.logger.error("Error reading: " + e.getMessage());
             onDisconnect();
+        }
+    }
+
+    public void enqueuePacket(W packet) {
+        try {
+            writeQueue.put(packet);
+        } catch (InterruptedException e) {
+            this.logger.warn("Error enqueuing packet: " + e.getMessage());
         }
     }
 

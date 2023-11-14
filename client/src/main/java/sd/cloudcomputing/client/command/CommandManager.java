@@ -16,7 +16,7 @@ public class CommandManager {
 
         register(new ConnectCommand(application));
         register(new HelpCommand(this));
-        register(new RunCommand(application.getScheduler()));
+        register(new JobCommand(application));
     }
 
     private void register(Command command) {
