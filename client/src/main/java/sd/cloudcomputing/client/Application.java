@@ -1,5 +1,6 @@
 package sd.cloudcomputing.client;
 
+import org.jetbrains.annotations.Nullable;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
@@ -84,12 +85,12 @@ public class Application {
         }
     }
 
-    public ServerConnection getCurrentServerConnection() {
-        return currentConnection;
+    public @Nullable ServerConnection getCurrentServerConnection() {
+        return currentConnection == null || !currentConnection.isConnected() ? null : currentConnection;
     }
 
     public boolean isConnected() {
-        return currentConnection != null && currentConnection.isConnected();
+        return getCurrentServerConnection() != null;
     }
 
     private void runCli() {
