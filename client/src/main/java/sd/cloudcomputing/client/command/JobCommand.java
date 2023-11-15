@@ -1,5 +1,6 @@
 package sd.cloudcomputing.client.command;
 
+import org.jetbrains.annotations.Nullable;
 import sd.cloudcomputing.client.Application;
 import sd.cloudcomputing.client.ServerConnection;
 import sd.cloudcomputing.common.logging.Logger;
@@ -17,8 +18,8 @@ public class JobCommand extends AbstractCommand {
         this.application = application;
     }
 
-    private static byte[] getFileBytes(String[] args) throws IOException {
-        Path path = Path.of(args[0]);
+    private static byte @Nullable [] getFileBytes(String pathString) throws IOException {
+        Path path = Path.of(pathString);
 
         return Files.readAllBytes(path);
     }
@@ -31,10 +32,16 @@ public class JobCommand extends AbstractCommand {
         }
 
         byte[] bytes;
+        String filePath = args[0];
         try {
-            bytes = getFileBytes(args);
+            bytes = getFileBytes(filePath);
         } catch (IOException e) {
             logger.error("Failed to read file: " + e.getMessage());
+            return;
+        }
+
+        if (bytes == null) {
+            logger.error("Failed to read file " + filePath);
             return;
         }
 
@@ -45,16 +52,14 @@ public class JobCommand extends AbstractCommand {
             return;
         }
 
-        boolean connected = application.isConnected();
-        if (!connected) {
+        ServerConnection currentServerConnection = application.getCurrentServerConnection();
+        if (currentServerConnection == null) {
             logger.error("Not connected to server");
             return;
         }
 
-        ServerConnection currentServerConnection = application.getCurrentServerConnection();
-
         int jobId = currentServerConnection.scheduleJob(bytes, memory);
-        logger.info("Scheduled job with id " + jobId);
+        logger.info("Sent job with id " + jobId + " with " + bytes.length + " bytes of data");
     }
 
 }

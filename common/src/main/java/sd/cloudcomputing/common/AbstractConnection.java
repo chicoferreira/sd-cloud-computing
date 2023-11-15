@@ -123,8 +123,11 @@ public abstract class AbstractConnection<W, R> {
             this.running = false;
 
             socket.close();
-            readThread.join();
-            writeThread.interrupt();
+            if (readThread != null)
+                readThread.join();
+
+            if (writeThread != null)
+                writeThread.interrupt();
         } catch (IOException e) {
             this.logger.info("Error closing socket: " + e.getMessage());
         } catch (InterruptedException e) {

@@ -20,9 +20,11 @@ import java.net.Socket;
 public class ServerConnection extends AbstractConnection<GenericPacket, GenericPacket> {
 
     private final SynchronizedInteger currentJobId = new SynchronizedInteger(0);
+    private final Application application;
 
-    public ServerConnection(Logger logger, Frost frost) {
+    public ServerConnection(Logger logger, Frost frost, Application application) {
         super(GenericPacket.class, GenericPacket.class, logger, frost);
+        this.application = application;
     }
 
     public boolean connect(String ip, int port) throws IOException {
@@ -72,5 +74,6 @@ public class ServerConnection extends AbstractConnection<GenericPacket, GenericP
     @Override
     public void onDisconnect() {
         super.getLogger().info("Disconnected from server");
+        application.notifyServerDisconnect();
     }
 }

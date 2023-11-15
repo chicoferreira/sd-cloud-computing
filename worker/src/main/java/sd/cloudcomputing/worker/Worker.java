@@ -110,9 +110,9 @@ public class Worker {
             while (running) {
                 JobResult jobResult = queuedJobResults.take();
                 if (jobResult.getResultType() == JobResult.ResultType.FAILURE) {
-                    logger.info("Job failed with error code " + jobResult.getErrorCode() + ": " + jobResult.getErrorMessage());
+                    logger.info("Job " + jobResult.getJobId() + "failed with error code " + jobResult.getErrorCode() + ": " + jobResult.getErrorMessage());
                 } else {
-                    logger.info("Job succeeded with result: " + jobResult.getData().length + " bytes");
+                    logger.info("Job " + jobResult.getJobId() + " succeeded with result: " + jobResult.getData().length + " bytes");
                 }
 
                 try {

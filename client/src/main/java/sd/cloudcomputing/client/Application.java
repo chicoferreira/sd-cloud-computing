@@ -56,7 +56,7 @@ public class Application {
             console.info("Already connected to a server");
         }
 
-        ServerConnection serverConnection = new ServerConnection(console, frost);
+        ServerConnection serverConnection = new ServerConnection(console, frost, this);
 
         try {
             if (serverConnection.connect(ip, port)) {
@@ -111,5 +111,9 @@ public class Application {
         LineReader reader = LineReaderBuilder.builder().terminal(terminal).build();
 
         return new JLineConsole(new DefaultLoggerFormat(), reader);
+    }
+
+    public void notifyServerDisconnect() {
+        this.currentConnection = null;
     }
 }
