@@ -19,7 +19,6 @@ import java.io.IOException;
 public class Application {
 
     private final CommandManager commandManager;
-    private final ClientPacketDispatcher scheduler;
     private final Frost frost;
     private Console console;
     private boolean running;
@@ -28,7 +27,6 @@ public class Application {
     public Application(Frost frost) {
         this.frost = frost;
         this.commandManager = new CommandManager(this);
-        this.scheduler = new ClientPacketDispatcher();
     }
 
     public void run() {
@@ -57,28 +55,32 @@ public class Application {
             console.info("Already connected to a server");
         }
 
-        ServerConnection serverConnection = new ServerConnection(console, frost, scheduler);
+        ServerConnection serverConnection = new ServerConnection(console, frost);
 
-        if (serverConnection.connect(ip, port)) {
-            console.info("Connected to server at " + serverConnection.getSocket().getAddressWithPort());
-            String username = console.readInput("Insert your username: ");
-            String password = console.readPassword("Insert your password: ");
+        try {
+            if (serverConnection.connect(ip, port)) {
+                console.info("Connected to server at " + serverConnection.getSocket().getAddressWithPort());
+                String username = console.readInput("Insert your username: ");
+                String password = console.readPassword("Insert your password: ");
 
-            try {
-                AuthenticateResult result = serverConnection.login(username, password);
-                if (result.isSuccess()) {
-                    console.info("Successfully authenticated as " + username + " (" + result + ")");
-                    serverConnection.startReadWrite();
-                    this.currentConnection = serverConnection;
-                } else {
-                    console.info("Failed to authenticate: " + result);
-                    serverConnection.close();
+                try {
+                    AuthenticateResult result = serverConnection.login(username, password);
+                    if (result.isSuccess()) {
+                        console.info("Successfully authenticated as " + username + " (" + result + ")");
+                        serverConnection.startReadWrite();
+                        this.currentConnection = serverConnection;
+                    } else {
+                        console.info("Failed to authenticate: " + result);
+                        serverConnection.close();
+                    }
+                } catch (IOException e) {
+                    console.error("Error sending packet to server: " + e.getMessage());
+                } catch (SerializationException e) {
+                    console.error("Error serializing auth packet: " + e.getMessage());
                 }
-            } catch (IOException e) {
-                console.error("Error sending packet to server: " + e.getMessage());
-            } catch (SerializationException e) {
-                console.error("Error serializing auth packet: " + e.getMessage());
             }
+        } catch (IOException e) {
+            console.error("Failed to connect to server: " + e.getMessage());
         }
     }
 
@@ -103,19 +105,10 @@ public class Application {
     }
 
     private Console createConsole() throws IOException {
-        Terminal terminal = TerminalBuilder.builder()
-                .jansi(true)
-                .dumb(true)
-                .build();
+        Terminal terminal = TerminalBuilder.builder().jansi(true).dumb(true).build();
 
-        LineReader reader = LineReaderBuilder.builder()
-                .terminal(terminal)
-                .build();
+        LineReader reader = LineReaderBuilder.builder().terminal(terminal).build();
 
         return new JLineConsole(new DefaultLoggerFormat(), reader);
-    }
-
-    public ClientPacketDispatcher getScheduler() {
-        return this.scheduler;
     }
 }

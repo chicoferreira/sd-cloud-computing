@@ -5,6 +5,7 @@ import sd.cloudcomputing.common.JobRequest;
 import sd.cloudcomputing.common.concurrent.SynchronizedInteger;
 import sd.cloudcomputing.common.logging.Logger;
 import sd.cloudcomputing.common.protocol.CSAuthPacket;
+import sd.cloudcomputing.common.protocol.CSServerStatusRequestPacket;
 import sd.cloudcomputing.common.protocol.GenericPacket;
 import sd.cloudcomputing.common.protocol.SCAuthResult;
 import sd.cloudcomputing.common.serialization.Frost;
@@ -24,15 +25,11 @@ public class ServerConnection extends AbstractConnection<GenericPacket, GenericP
         super(GenericPacket.class, GenericPacket.class, logger, frost);
     }
 
-    public boolean connect(String ip, int port) {
-        try {
-            Socket socket = new Socket(ip, port);
-            super.hookSocket(socket);
+    public boolean connect(String ip, int port) throws IOException {
+        Socket socket = new Socket(ip, port);
+        super.hookSocket(socket);
 
-            return true;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return true;
     }
 
     public AuthenticateResult login(String username, String password) throws IOException, SerializationException {
@@ -59,9 +56,17 @@ public class ServerConnection extends AbstractConnection<GenericPacket, GenericP
         return jobId;
     }
 
+    public void sendServerStatusRequest() throws IOException, SerializationException {
+        SerializeOutput serializeOutput = super.writeEnd();
+
+        GenericPacket packet = new GenericPacket(CSServerStatusRequestPacket.PACKET_ID, new CSServerStatusRequestPacket());
+        super.getFrost().writeSerializable(packet, GenericPacket.class, serializeOutput);
+        super.getFrost().flush(serializeOutput);
+    }
+
     @Override
     public void handlePacket(GenericPacket packet) {
-        super.getLogger().info("Received packet " + packet.content().getClass().getSimpleName());
+        super.getLogger().info("Received packet " + packet.content());
     }
 
     @Override

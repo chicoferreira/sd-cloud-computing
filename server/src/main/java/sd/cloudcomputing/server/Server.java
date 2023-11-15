@@ -112,7 +112,7 @@ public class Server {
                             ClientConnection clientConnection = new ClientConnection(this.logger, this.frost, this.clientManager, clientSocket, this.clientPacketHandler);
                             Client client = clientConnection.acceptLogin();
                             if (client != null) {
-                                this.logger.info("Client " + client + " authenticated successfully");
+                                this.logger.info("Client " + client.getName() + " authenticated successfully");
                                 clientConnection.startReadWrite();
 
                                 this.clientConnections.add(clientConnection);
