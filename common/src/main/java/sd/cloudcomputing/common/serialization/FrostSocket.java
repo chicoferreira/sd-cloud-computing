@@ -18,6 +18,10 @@ public class FrostSocket {
         this.socket = socket;
     }
 
+    public String getAddressWithPort() {
+        return socket.getInetAddress().getHostAddress() + ":" + socket.getPort();
+    }
+
     public SerializeInput readEnd() throws IOException {
         if (serializeInput == null)
             serializeInput = new SerializeInput(new DataInputStream(new BufferedInputStream(socket.getInputStream())));

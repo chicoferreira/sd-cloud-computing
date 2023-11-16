@@ -8,10 +8,6 @@ import java.io.IOException;
 
 public record SCAuthResult(AuthenticateResult result) {
 
-    public boolean isSuccess() {
-        return result == AuthenticateResult.LOGGED_IN || result == AuthenticateResult.REGISTERED;
-    }
-
     public static class Serialization implements Serialize<SCAuthResult> {
 
         @Override

@@ -6,6 +6,7 @@ import sd.cloudcomputing.common.concurrent.BoundedBuffer;
 import sd.cloudcomputing.common.logging.AbstractLogger;
 import sd.cloudcomputing.common.logging.impl.StdoutLogger;
 import sd.cloudcomputing.common.logging.impl.ThreadPrefixedLoggerFormat;
+import sd.cloudcomputing.common.protocol.WSHandshakePacket;
 import sd.cloudcomputing.common.serialization.Frost;
 import sd.cloudcomputing.common.serialization.SerializationException;
 import sd.cloudcomputing.common.serialization.SerializeInput;
@@ -13,7 +14,6 @@ import sd.cloudcomputing.common.serialization.SerializeOutput;
 
 import java.io.*;
 import java.net.Socket;
-import java.net.SocketException;
 
 public class Worker {
 
@@ -22,11 +22,13 @@ public class Worker {
     private final WorkerScheduler workerScheduler;
     private final BoundedBuffer<JobResult> queuedJobResults;
     private final Frost frost;
+    private final int maxMemoryCapacity;
 
     private boolean running;
 
     public Worker(Frost frost, int maxMemoryCapacity, int maxConcurrentJobs) {
         this.frost = frost;
+        this.maxMemoryCapacity = maxMemoryCapacity;
         this.logger = new StdoutLogger(new ThreadPrefixedLoggerFormat());
         this.logger.hookSystemPrint();
 
@@ -58,39 +60,31 @@ public class Worker {
 
         logger.info("Connecting to server on " + host + ":" + port);
         try (Socket socket = new Socket(host, port)) {
-            logger.info("Server connected. Waiting for requests...");
+            logger.info("Server connected. Sending handshake and waiting for requests...");
+
+            DataOutputStream dataOutputStream = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
+            SerializeOutput output = new SerializeOutput(dataOutputStream);
+
+            frost.writeSerializable(new WSHandshakePacket(this.maxMemoryCapacity), WSHandshakePacket.class, output);
+            frost.flush(output);
 
             Thread jobResultHandlerThread = new Thread(() -> handleJobResults(socket), "Worker-Job-Result-Handler-Thread");
             jobResultHandlerThread.start();
 
             this.workerScheduler.start();
 
+            DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+            SerializeInput serializeInput = new SerializeInput(dataInputStream);
             while (running) {
                 try {
-                    InputStream inputStream = socket.getInputStream();
-
-                    DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(inputStream));
-
-                    SerializeInput serializeInput = new SerializeInput(dataInputStream);
                     JobRequest jobRequest = frost.readSerializable(JobRequest.class, serializeInput);
-                    if (jobRequest == null) {
-                        logger.warn("Received unkwown bytes.");
-                        continue;
-                    }
-                    logger.info("Received job request with id " + jobRequest.getJobId() + " and " + jobRequest.getData().length + " bytes of data");
-                    workerScheduler.queue(jobRequest);
-                } catch (SerializationException e) {
-                    if (e.getCause() instanceof EOFException) {
-                        this.running = false;
-                        logger.info("Server disconnected");
-                        continue;
-                    }
-                    if (e.getCause() instanceof SocketException) {
-                        this.running = false;
-                        logger.error("Socket error", e.getCause());
-                        continue;
-                    }
 
+                    logger.info("Received job request with id " + jobRequest.jobId() + " and " + jobRequest.data().length + " bytes of data");
+                    workerScheduler.queue(jobRequest);
+                } catch (IOException e) {
+                    this.running = false;
+                    logger.info("Server disconnected");
+                } catch (SerializationException e) {
                     logger.error("Couldn't parse object: ", e);
                 }
             }
@@ -99,6 +93,8 @@ public class Worker {
             jobResultHandlerThread.interrupt();
         } catch (IOException e) {
             logger.error("Failed to create server: ", e);
+        } catch (SerializationException e) {
+            logger.error("Failed to serialize handshake packet: ", e);
         }
     }
 
@@ -114,9 +110,9 @@ public class Worker {
             while (running) {
                 JobResult jobResult = queuedJobResults.take();
                 if (jobResult.getResultType() == JobResult.ResultType.FAILURE) {
-                    logger.info("Job failed with error code " + jobResult.getErrorCode() + ": " + jobResult.getErrorMessage());
+                    logger.info("Job " + jobResult.getJobId() + "failed with error code " + jobResult.getErrorCode() + ": " + jobResult.getErrorMessage());
                 } else {
-                    logger.info("Job succeeded with result: " + jobResult.getData().length + " bytes");
+                    logger.info("Job " + jobResult.getJobId() + " succeeded with result: " + jobResult.getData().length + " bytes");
                 }
 
                 try {
