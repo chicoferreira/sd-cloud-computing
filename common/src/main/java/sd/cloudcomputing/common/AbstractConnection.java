@@ -16,17 +16,18 @@ public abstract class AbstractConnection<W, R> {
     private final Frost frost;
     private final Class<W> writePacketClass;
     private final Class<R> readPacketClass;
-    private FrostSocket socket;
+    private final FrostSocket socket;
     private boolean running;
     private Thread writeThread;
     private Thread readThread;
 
-    public AbstractConnection(Class<W> writePacketClass, Class<R> readPacketClass, Logger logger, Frost frost) {
+    public AbstractConnection(Class<W> writePacketClass, Class<R> readPacketClass, Logger logger, Frost frost, Socket socket) {
         this.writePacketClass = writePacketClass;
         this.readPacketClass = readPacketClass;
         this.logger = logger;
         this.frost = frost;
         this.writeQueue = new BoundedBuffer<>(100);
+        this.socket = new FrostSocket(socket);
     }
 
     protected Frost getFrost() {
@@ -47,10 +48,6 @@ public abstract class AbstractConnection<W, R> {
 
     public SerializeInput readEnd() throws IOException {
         return this.socket.readEnd();
-    }
-
-    public void hookSocket(Socket socket) {
-        this.socket = new FrostSocket(socket);
     }
 
     public void startReadWrite() {
@@ -95,7 +92,7 @@ public abstract class AbstractConnection<W, R> {
     protected abstract void onDisconnect();
 
     public boolean isConnected() {
-        return running && socket != null && socket.isConnected();
+        return running && socket.isConnected();
     }
 
     protected W getNextPacketToWrite() throws InterruptedException {

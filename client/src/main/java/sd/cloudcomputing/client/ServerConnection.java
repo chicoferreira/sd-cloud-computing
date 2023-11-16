@@ -22,16 +22,9 @@ public class ServerConnection extends AbstractConnection<GenericPacket, GenericP
     private final SynchronizedInteger currentJobId = new SynchronizedInteger(0);
     private final Application application;
 
-    public ServerConnection(Logger logger, Frost frost, Application application) {
-        super(GenericPacket.class, GenericPacket.class, logger, frost);
+    public ServerConnection(Logger logger, Frost frost, Application application, Socket socket) {
+        super(GenericPacket.class, GenericPacket.class, logger, frost, socket);
         this.application = application;
-    }
-
-    public boolean connect(String ip, int port) throws IOException {
-        Socket socket = new Socket(ip, port);
-        super.hookSocket(socket);
-
-        return true;
     }
 
     public AuthenticateResult login(String username, String password) throws IOException, SerializationException {

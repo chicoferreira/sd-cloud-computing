@@ -20,9 +20,8 @@ public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> 
     private int maxMemoryCapacity;
 
     public WorkerConnection(Logger logger, Frost frost, Socket socket, ConnectedWorkerManager connectedWorkerManager) {
-        super(JobRequest.class, JobResult.class, logger, frost);
+        super(JobRequest.class, JobResult.class, logger, frost, socket);
         this.connectedWorkerManager = connectedWorkerManager;
-        hookSocket(socket);
         this.pendingJobRequests = new SynchronizedMap<>();
     }
 

@@ -22,10 +22,9 @@ public class ClientConnection extends AbstractConnection<GenericPacket, GenericP
     private Client client;
 
     public ClientConnection(Logger logger, Frost frost, ClientManager clientManager, Socket socket, ClientPacketHandler clientPacketHandler) {
-        super(GenericPacket.class, GenericPacket.class, logger, frost);
+        super(GenericPacket.class, GenericPacket.class, logger, frost, socket);
         this.clientManager = clientManager;
         this.clientPacketHandler = clientPacketHandler;
-        hookSocket(socket);
     }
 
     public @Nullable Client acceptLogin() throws IOException, SerializationException {
