@@ -72,7 +72,7 @@ public class ServerConnection extends AbstractConnection<GenericPacket, GenericP
     }
 
     @Override
-    public void onDisconnect() {
+    protected void onDisconnect() {
         super.getLogger().info("Disconnected from server");
         application.notifyServerDisconnect();
     }

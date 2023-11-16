@@ -151,7 +151,7 @@ public class Server {
         this.running = false;
         this.connectedWorkerManager.closeAll();
         this.workerConnectionHandler.interrupt();
-        this.clientConnections.forEach(ClientConnection::close);
+        this.clientConnections.forEach(ClientConnection::disconnect);
         this.clientConnectionHandler.interrupt();
     }
 

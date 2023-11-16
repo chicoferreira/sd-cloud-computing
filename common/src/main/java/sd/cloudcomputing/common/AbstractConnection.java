@@ -4,8 +4,10 @@ import sd.cloudcomputing.common.concurrent.BoundedBuffer;
 import sd.cloudcomputing.common.logging.Logger;
 import sd.cloudcomputing.common.serialization.*;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketException;
 
 public abstract class AbstractConnection<W, R> {
 
@@ -61,7 +63,7 @@ public abstract class AbstractConnection<W, R> {
         this.writeThread.start();
     }
 
-    public void runRead() {
+    private void runRead() {
         try {
             while (running) {
                 SerializeInput serializeInput = socket.readEnd();
@@ -72,9 +74,11 @@ public abstract class AbstractConnection<W, R> {
                     this.logger.warn("Error deserializing generic packet: " + e.getMessage());
                 }
             }
+        } catch (EOFException | SocketException e) {
+            disconnect();
         } catch (IOException e) {
             this.logger.error("Error reading: " + e.getMessage());
-            onDisconnect();
+            disconnect();
         }
     }
 
@@ -86,19 +90,19 @@ public abstract class AbstractConnection<W, R> {
         }
     }
 
-    public abstract void handlePacket(R packet);
+    protected abstract void handlePacket(R packet);
 
-    public abstract void onDisconnect();
+    protected abstract void onDisconnect();
 
     public boolean isConnected() {
         return running && socket != null && socket.isConnected();
     }
 
-    public W getNextPacketToWrite() throws InterruptedException {
+    protected W getNextPacketToWrite() throws InterruptedException {
         return writeQueue.take();
     }
 
-    public void runWrite() {
+    private void runWrite() {
         try {
             while (running) {
                 W packet = getNextPacketToWrite();
@@ -112,26 +116,30 @@ public abstract class AbstractConnection<W, R> {
             }
         } catch (IOException e) {
             this.logger.error("Error writing: " + e.getMessage());
-            onDisconnect();
-            close();
+            disconnect();
         } catch (InterruptedException ignored) {
         }
     }
 
-    public void close() {
+    public void disconnect() {
+        if (!isConnected())
+            return;
+
+        this.running = false;
+
+        if (readThread != null) {
+            readThread.interrupt();
+        }
+
+        if (writeThread != null)
+            writeThread.interrupt();
+
         try {
-            this.running = false;
-
             socket.close();
-            if (readThread != null)
-                readThread.join();
-
-            if (writeThread != null)
-                writeThread.interrupt();
         } catch (IOException e) {
             this.logger.info("Error closing socket: " + e.getMessage());
-        } catch (InterruptedException e) {
-            this.logger.info("Error joining threads: " + e.getMessage());
         }
+
+        onDisconnect();
     }
 }

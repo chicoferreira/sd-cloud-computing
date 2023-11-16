@@ -49,7 +49,7 @@ public class ConnectedWorkerManager {
     }
 
     public void closeAll() {
-        workerConnections.forEach(WorkerConnection::close);
+        workerConnections.forEach(WorkerConnection::disconnect);
     }
 
     public void notifyDisconnect(WorkerConnection workerConnection) {

@@ -72,7 +72,7 @@ public class Application {
                         this.currentConnection = serverConnection;
                     } else {
                         console.info("Failed to authenticate: " + result);
-                        serverConnection.close();
+                        serverConnection.disconnect();
                     }
                 } catch (IOException e) {
                     console.error("Error sending packet to server: " + e.getMessage());
