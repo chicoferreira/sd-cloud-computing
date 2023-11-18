@@ -9,7 +9,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketException;
 
-public abstract class AbstractConnection<W, R> {
+public abstract class AbstractConnection<W, R> implements AutoCloseable {
 
     private final Logger logger;
     private final BoundedBuffer<W> writeQueue;
@@ -138,5 +138,19 @@ public abstract class AbstractConnection<W, R> {
         }
 
         onDisconnect();
+    }
+
+    @Override
+    public void close() {
+        disconnect();
+    }
+
+    public void join() {
+        try {
+            this.readThread.join();
+            this.writeThread.join();
+        } catch (InterruptedException e) {
+            this.logger.warn("Error joining threads: " + e.getMessage());
+        }
     }
 }

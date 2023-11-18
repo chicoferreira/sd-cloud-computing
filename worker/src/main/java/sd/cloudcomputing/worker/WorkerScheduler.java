@@ -54,12 +54,7 @@ public class WorkerScheduler {
     public void stop() {
         this.running = false;
         for (Thread thread : threads) {
-            try {
-                thread.interrupt();
-                thread.join();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            thread.interrupt();
         }
     }
 
@@ -70,9 +65,6 @@ public class WorkerScheduler {
                 try {
                     while (running) {
                         JobRequest jobRequest = queuedJobs.take(); // this waits until a job is available
-                        if (jobRequest == null) {
-                            continue;
-                        }
 
                         if (jobRequest.memoryNeeded() > this.maxMemoryCapacity) {
                             this.logger.warn("Job " + jobRequest.jobId() + " requires more memory than the worker can provide");
@@ -89,6 +81,13 @@ public class WorkerScheduler {
                             lock.unlock();
 
                             JobResult jobResult = jobExecutor.execute(jobRequest);
+
+                            if (jobResult.getResultType() == JobResult.ResultType.SUCCESS) {
+                                this.logger.info("Job " + jobResult.getJobId() + " succeeded with result: " + jobResult.getData().length + " bytes");
+                            } else {
+                                this.logger.info("Job " + jobResult.getJobId() + "failed with error code " + jobResult.getErrorCode() + ": " + jobResult.getErrorMessage());
+                            }
+
                             this.endJobCallback.accept(jobResult);
 
                             lock.lock();
@@ -101,8 +100,7 @@ public class WorkerScheduler {
                             lock.unlock();
                         }
                     }
-                } catch (InterruptedException e) {
-                    this.logger.info("Worker thread was interrupted");
+                } catch (InterruptedException ignored) {
                 }
             }, "Worker-thread-" + i);
             threads[i].start();
