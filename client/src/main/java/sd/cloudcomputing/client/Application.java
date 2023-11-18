@@ -12,11 +12,10 @@ import sd.cloudcomputing.common.logging.Console;
 import sd.cloudcomputing.common.logging.impl.DefaultLoggerFormat;
 import sd.cloudcomputing.common.logging.impl.JLineConsole;
 import sd.cloudcomputing.common.serialization.Frost;
-import sd.cloudcomputing.common.serialization.SerializationException;
-import sd.cloudcomputing.common.util.AuthenticateResult;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.function.Supplier;
 
 public class Application {
 
@@ -62,23 +61,12 @@ public class Application {
             ServerConnection serverConnection = new ServerConnection(console, frost, this, socket);
 
             console.info("Connected to server at " + serverConnection.getSocket().getAddressWithPort());
-            String username = console.readInput("Insert your username: ");
-            String password = console.readPassword("Insert your password: ");
 
-            try {
-                AuthenticateResult result = serverConnection.login(username, password);
-                if (result.isSuccess()) {
-                    console.info("Successfully authenticated as " + username + " (" + result + ")");
-                    serverConnection.startReadWrite();
-                    this.currentConnection = serverConnection;
-                } else {
-                    console.info("Failed to authenticate: " + result);
-                    serverConnection.disconnect();
-                }
-            } catch (IOException e) {
-                console.error("Error sending packet to server: " + e.getMessage());
-            } catch (SerializationException e) {
-                console.error("Error serializing auth packet: " + e.getMessage());
+            Supplier<String> username = () -> console.readInput("Insert your username: ");
+            Supplier<String> password = () -> console.readPassword("Insert your password: ");
+
+            if (serverConnection.start(username, password)) {
+                this.currentConnection = serverConnection;
             }
         } catch (IOException e) {
             console.error("Failed to connect to server: " + e.getMessage());

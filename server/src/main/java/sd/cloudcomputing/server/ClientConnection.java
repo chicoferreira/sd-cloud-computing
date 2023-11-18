@@ -27,7 +27,24 @@ public class ClientConnection extends AbstractConnection<GenericPacket, GenericP
         this.clientPacketHandler = clientPacketHandler;
     }
 
-    public @Nullable Client acceptLogin() throws IOException, SerializationException {
+
+    public boolean start() {
+        try {
+            Client client = this.acceptLogin();
+            if (client != null) {
+                this.getLogger().info("Client " + client.getName() + " authenticated successfully");
+                this.startReadWrite();
+                return true;
+            }
+        } catch (SerializationException e) {
+            getLogger().error("Error deserializing handshake packet: ", e);
+        } catch (IOException e) {
+            getLogger().error("Error receiving packet to worker: ", e);
+        }
+        return false;
+    }
+
+    private @Nullable Client acceptLogin() throws IOException, SerializationException {
         SerializeInput serializeInput = super.readEnd();
 
         CSAuthPacket csAuthPacket = super.getFrost().readSerializable(CSAuthPacket.class, serializeInput);

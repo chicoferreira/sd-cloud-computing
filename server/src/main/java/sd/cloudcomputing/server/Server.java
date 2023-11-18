@@ -5,7 +5,6 @@ import sd.cloudcomputing.common.logging.Logger;
 import sd.cloudcomputing.common.logging.impl.StdoutLogger;
 import sd.cloudcomputing.common.logging.impl.ThreadPrefixedLoggerFormat;
 import sd.cloudcomputing.common.serialization.Frost;
-import sd.cloudcomputing.common.serialization.SerializationException;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -70,15 +69,9 @@ public class Server {
                     logger.info("Received connection from worker " + workerSocket.getInetAddress() + ":" + workerSocket.getPort() + ". Waiting for handshake...");
                     Thread connectionThread = new Thread(() -> {
                         WorkerConnection workerConnection = new WorkerConnection(this.logger, this.frost, workerSocket, connectedWorkerManager);
-                        try {
-                            workerConnection.performHandshake();
-                        } catch (SerializationException e) {
-                            logger.error("Error deserializing handshake packet: ", e);
-                        } catch (IOException e) {
-                            logger.error("Error receiving packet to worker: ", e);
+                        if (workerConnection.start()) {
+                            this.connectedWorkerManager.addConnectedWorker(workerConnection);
                         }
-                        workerConnection.startReadWrite();
-                        this.connectedWorkerManager.addConnectedWorker(workerConnection);
                     }, "Worker-Connection-Thread-" + currentWorkerId++); // Only this thread increments the worker id, no need to synchronize
 
                     pendingConnections.add(connectionThread);
@@ -108,19 +101,9 @@ public class Server {
                     Socket clientSocket = serverSocket.accept();
                     logger.info("Received connection from client " + clientSocket.getInetAddress() + ":" + clientSocket.getPort() + ". Waiting for authentication...");
                     Thread connectionThread = new Thread(() -> {
-                        try {
-                            ClientConnection clientConnection = new ClientConnection(this.logger, this.frost, this.clientManager, clientSocket, this.clientPacketHandler);
-                            Client client = clientConnection.acceptLogin();
-                            if (client != null) {
-                                this.logger.info("Client " + client.getName() + " authenticated successfully");
-                                clientConnection.startReadWrite();
-
-                                this.clientConnections.add(clientConnection);
-                            }
-                        } catch (IOException e) {
-                            this.logger.error("Error sending packet to client: " + e.getMessage());
-                        } catch (SerializationException e) {
-                            this.logger.error("Serialization error auth packet: " + e.getMessage());
+                        ClientConnection clientConnection = new ClientConnection(this.logger, this.frost, this.clientManager, clientSocket, this.clientPacketHandler);
+                        if (clientConnection.start()) {
+                            this.clientConnections.add(clientConnection);
                         }
                     }, "Client-Connection-Thread-" + currentConnectionId++); // Only this thread increments the id, no need to synchronize
 

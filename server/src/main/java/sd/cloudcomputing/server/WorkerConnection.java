@@ -56,7 +56,7 @@ public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> 
         return jobRequest;
     }
 
-    public void performHandshake() throws SerializationException, IOException {
+    private void performHandshake() throws SerializationException, IOException {
         SerializeInput input = readEnd();
         WSHandshakePacket wsHandshakePacket = super.getFrost().readSerializable(WSHandshakePacket.class, input);
         super.getLogger().info("Worker connected with max memory capacity of " + wsHandshakePacket.maxMemoryCapacity());
@@ -72,5 +72,17 @@ public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> 
 
     public int getAmountOfJobsRunning() {
         return pendingJobRequests.size();
+    }
+
+    public boolean start() {
+        try {
+            this.performHandshake();
+            this.startReadWrite();
+        } catch (SerializationException e) {
+            getLogger().error("Error deserializing handshake packet: ", e);
+        } catch (IOException e) {
+            getLogger().error("Error receiving packet to worker: ", e);
+        }
+        return false;
     }
 }

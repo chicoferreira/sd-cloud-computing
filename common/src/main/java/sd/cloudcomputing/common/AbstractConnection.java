@@ -50,7 +50,7 @@ public abstract class AbstractConnection<W, R> {
         return this.socket.readEnd();
     }
 
-    public void startReadWrite() {
+    protected void startReadWrite() {
         this.running = true;
 
         this.readThread = new Thread(this::runRead, Thread.currentThread().getName() + "-Read-Thread");

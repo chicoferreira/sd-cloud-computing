@@ -16,6 +16,7 @@ import sd.cloudcomputing.common.util.AuthenticateResult;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.function.Supplier;
 
 public class ServerConnection extends AbstractConnection<GenericPacket, GenericPacket> {
 
@@ -68,5 +69,27 @@ public class ServerConnection extends AbstractConnection<GenericPacket, GenericP
     protected void onDisconnect() {
         super.getLogger().info("Disconnected from server");
         application.notifyServerDisconnect();
+    }
+
+    public boolean start(Supplier<String> usernameSupplier, Supplier<String> passwordSupplier) {
+        try {
+            String username = usernameSupplier.get();
+            String password = passwordSupplier.get();
+
+            AuthenticateResult result = this.login(username, password);
+            if (result.isSuccess()) {
+                getLogger().info("Successfully authenticated as " + usernameSupplier + " (" + result + ")");
+                this.startReadWrite();
+                return true;
+            } else {
+                getLogger().info("Failed to authenticate: " + result);
+                this.disconnect();
+            }
+        } catch (IOException e) {
+            getLogger().error("Error sending packet to server: " + e.getMessage());
+        } catch (SerializationException e) {
+            getLogger().error("Error serializing auth packet: " + e.getMessage());
+        }
+        return false;
     }
 }
