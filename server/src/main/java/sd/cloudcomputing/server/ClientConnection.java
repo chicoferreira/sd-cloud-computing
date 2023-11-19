@@ -29,35 +29,33 @@ public class ClientConnection extends AbstractConnection<GenericPacket, GenericP
 
 
     public boolean start() {
-        try {
-            Client client = this.acceptLogin();
-            if (client != null) {
-                this.getLogger().info("Client " + client.getName() + " authenticated successfully");
-                this.startReadWrite();
-                return true;
-            }
-        } catch (SerializationException e) {
-            getLogger().error("Error deserializing handshake packet: ", e);
-        } catch (IOException e) {
-            getLogger().error("Error receiving packet to worker: ", e);
+        Client client = this.acceptLogin();
+        if (client != null) {
+            this.getLogger().info("Client " + client.getName() + " authenticated successfully");
+            this.startReadWrite();
+            return true;
         }
         return false;
     }
 
-    private @Nullable Client acceptLogin() throws IOException, SerializationException {
-        SerializeInput serializeInput = super.readEnd();
+    private @Nullable Client acceptLogin() {
+        try {
+            SerializeInput serializeInput = super.readEnd();
 
-        CSAuthPacket csAuthPacket = super.getFrost().readSerializable(CSAuthPacket.class, serializeInput);
-        AuthenticateResult authenticateResult = clientManager.authenticateClient(csAuthPacket.getUsername(), csAuthPacket.getPassword());
-        SCAuthResult scAuthResult = new SCAuthResult(authenticateResult);
+            CSAuthPacket csAuthPacket = super.getFrost().readSerializable(CSAuthPacket.class, serializeInput);
+            AuthenticateResult authenticateResult = clientManager.authenticateClient(csAuthPacket.getUsername(), csAuthPacket.getPassword());
+            SCAuthResult scAuthResult = new SCAuthResult(authenticateResult);
 
-        SerializeOutput serializeOutput = writeEnd();
-        super.getFrost().writeSerializable(scAuthResult, SCAuthResult.class, serializeOutput);
-        super.getFrost().flush(serializeOutput);
+            SerializeOutput serializeOutput = writeEnd();
+            super.getFrost().writeSerializable(scAuthResult, SCAuthResult.class, serializeOutput);
+            super.getFrost().flush(serializeOutput);
 
-        if (authenticateResult.isSuccess()) {
-            this.client = clientManager.getClient(csAuthPacket.getUsername());
-            return this.client;
+            if (authenticateResult.isSuccess()) {
+                this.client = clientManager.getClient(csAuthPacket.getUsername());
+                return this.client;
+            }
+        } catch (IOException | SerializationException e) {
+            this.getLogger().warn("Error authenticating client: " + e.getMessage());
         }
 
         return null;
