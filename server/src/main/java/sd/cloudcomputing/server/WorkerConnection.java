@@ -78,6 +78,7 @@ public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> 
         try {
             this.performHandshake();
             this.startReadWrite();
+            return true;
         } catch (SerializationException e) {
             getLogger().error("Error deserializing handshake packet: ", e);
         } catch (IOException e) {

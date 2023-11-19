@@ -78,7 +78,7 @@ public class ServerConnection extends AbstractConnection<GenericPacket, GenericP
 
             AuthenticateResult result = this.login(username, password);
             if (result.isSuccess()) {
-                getLogger().info("Successfully authenticated as " + usernameSupplier + " (" + result + ")");
+                getLogger().info("Successfully authenticated as " + username + " (" + result + ")");
                 this.startReadWrite();
                 return true;
             } else {
