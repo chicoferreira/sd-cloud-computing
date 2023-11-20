@@ -1,6 +1,7 @@
 package sd.cloudcomputing.common;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import sd.cloudcomputing.common.serialization.Frost;
 import sd.cloudcomputing.common.serialization.Serialize;
 import sd.cloudcomputing.common.serialization.SerializeInput;
@@ -44,7 +45,7 @@ public class JobResult {
         return resultType;
     }
 
-    public byte[] getData() {
+    public byte @Nullable("null when ResultType=FAILURE") [] getData() {
         return data;
     }
 

@@ -25,26 +25,29 @@ public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> 
         this.pendingJobRequests = new SynchronizedMap<>();
     }
 
-    public int getMaxMemoryCapacity() {
-        return maxMemoryCapacity;
-    }
-
-    public int getCurrentEstimatedMemoryUsage() {
-        return this.pendingJobRequests.sumValues(JobRequest::memoryNeeded);
-    }
-
     public int getEstimatedFreeMemory() {
-        return this.maxMemoryCapacity - getCurrentEstimatedMemoryUsage();
+        return this.maxMemoryCapacity - this.pendingJobRequests.sumValues(JobRequest::memoryNeeded);
+    }
+
+    public int getMaxMemoryCapacity() {
+        return this.maxMemoryCapacity;
+    }
+
+    public Status getStatus() {
+        return new Status(this.pendingJobRequests.size(), this.maxMemoryCapacity, this.pendingJobRequests.sumValues(JobRequest::memoryNeeded));
     }
 
     @Override
     public void handlePacket(JobResult jobResult) {
-        super.getLogger().info("Received job result: " + jobResult.getJobId() + " " + new String(jobResult.getData()));
+        super.getLogger().info("Received job result " + jobResult.getJobId() + " with " + jobResult.getResultType());
 
         JobRequest jobRequest = pendingJobRequests.remove(jobResult.getJobId());
         if (jobRequest == null) {
             super.getLogger().warn("Not pending job request: " + jobResult.getJobId() + ". Race condition?");
         }
+    }
+
+    public record Status(int jobsRunning, int memoryCapacity, int currentEstimatedMemoryUsage) {
     }
 
     @Override

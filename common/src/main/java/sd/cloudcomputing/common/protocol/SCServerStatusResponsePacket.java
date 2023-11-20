@@ -5,7 +5,7 @@ import sd.cloudcomputing.common.serialization.*;
 
 import java.io.IOException;
 
-public record SCServerStatusResponsePacket(int connectedWorkers, int totalMemoryCombined, int maxMemory,
+public record SCServerStatusResponsePacket(int connectedWorkers, int totalCapacity, int maxPossibleMemory,
                                            int memoryUsagePercentage, int jobsCurrentlyRunning) {
 
     public static final int PACKET_ID = 4;
@@ -26,8 +26,8 @@ public record SCServerStatusResponsePacket(int connectedWorkers, int totalMemory
         @Override
         public void serialize(SCServerStatusResponsePacket object, SerializeOutput output, Frost frost) throws SerializationException, IOException {
             frost.writeInt(object.connectedWorkers(), output);
-            frost.writeInt(object.totalMemoryCombined(), output);
-            frost.writeInt(object.maxMemory(), output);
+            frost.writeInt(object.totalCapacity(), output);
+            frost.writeInt(object.maxPossibleMemory(), output);
             frost.writeInt(object.memoryUsagePercentage(), output);
             frost.writeInt(object.jobsCurrentlyRunning(), output);
         }

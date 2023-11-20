@@ -32,13 +32,7 @@ public class ClientPacketHandler {
             case CSServerStatusRequestPacket.PACKET_ID -> {
                 logger.info("Received server status request from " + client.getName());
 
-                SCServerStatusResponsePacket response = new SCServerStatusResponsePacket(
-                        connectedWorkerManager.getTotalConnectedWorkers(),
-                        connectedWorkerManager.getTotalMemoryCombined(),
-                        connectedWorkerManager.getMaxMemory(),
-                        connectedWorkerManager.getMemoryUsagePercentage(),
-                        connectedWorkerManager.getAmountOfJobsCurrentlyRunning()
-                );
+                SCServerStatusResponsePacket response = connectedWorkerManager.getServerStatus();
 
                 connection.enqueuePacket(new GenericPacket(SCServerStatusResponsePacket.PACKET_ID, response));
             }

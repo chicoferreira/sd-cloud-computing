@@ -2,6 +2,7 @@ package sd.cloudcomputing.server;
 
 import sd.cloudcomputing.common.JobRequest;
 import sd.cloudcomputing.common.concurrent.SynchronizedList;
+import sd.cloudcomputing.common.protocol.SCServerStatusResponsePacket;
 
 import java.util.Comparator;
 import java.util.List;
@@ -25,14 +26,15 @@ public class ConnectedWorkerManager {
         return true;
     }
 
-    public SynchronizedList<WorkerConnection> getWorkerConnections() {
-        return workerConnections;
-    }
-
     public WorkerConnection findAvailableWorker(int memoryNeeded) {
         workerConnections.internalLock();
         try {
             List<WorkerConnection> internalList = workerConnections.getInternalList();
+            for (WorkerConnection workerConnection : internalList) {
+                if (workerConnection.getMaxMemoryCapacity() >= memoryNeeded) {
+                    return workerConnection;
+                }
+            }
             Optional<WorkerConnection> first = internalList.stream()
                     .sorted(Comparator.comparingInt(WorkerConnection::getEstimatedFreeMemory))
                     .filter(workerConnection -> workerConnection.getMaxMemoryCapacity() >= memoryNeeded)
@@ -56,23 +58,28 @@ public class ConnectedWorkerManager {
         workerConnections.remove(workerConnection);
     }
 
-    public int getTotalConnectedWorkers() {
-        return workerConnections.size();
-    }
+    public SCServerStatusResponsePacket getServerStatus() {
+        workerConnections.internalLock();
+        try {
+            List<WorkerConnection.Status> workerStatuses = workerConnections
+                    .getInternalList()
+                    .stream()
+                    .map(WorkerConnection::getStatus)
+                    .toList();
 
-    public int getTotalMemoryCombined() {
-        return workerConnections.sum(WorkerConnection::getMaxMemoryCapacity);
-    }
+            int totalCapacity = workerStatuses.stream().mapToInt(WorkerConnection.Status::memoryCapacity).sum();
+            int totalMemoryUsage = workerStatuses.stream().mapToInt(WorkerConnection.Status::currentEstimatedMemoryUsage).sum();
+            int memoryUsagePercentage = (int) (((double) totalMemoryUsage / (double) totalCapacity) * 100);
 
-    public int getMaxMemory() {
-        return workerConnections.max(WorkerConnection::getMaxMemoryCapacity);
-    }
-
-    public int getMemoryUsagePercentage() {
-        return (int) (((double) getTotalMemoryCombined() / (double) getMaxMemory()) * 100);
-    }
-
-    public int getAmountOfJobsCurrentlyRunning() {
-        return workerConnections.sum(WorkerConnection::getAmountOfJobsRunning);
+            return new SCServerStatusResponsePacket(
+                    workerStatuses.size(),
+                    totalCapacity,
+                    workerStatuses.stream().mapToInt(WorkerConnection.Status::memoryCapacity).max().orElse(0),
+                    memoryUsagePercentage,
+                    workerStatuses.stream().mapToInt(WorkerConnection.Status::jobsRunning).sum()
+            );
+        } finally {
+            workerConnections.internalUnlock();
+        }
     }
 }

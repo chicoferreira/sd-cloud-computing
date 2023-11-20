@@ -85,7 +85,7 @@ public class WorkerScheduler {
                             if (jobResult.getResultType() == JobResult.ResultType.SUCCESS) {
                                 this.logger.info("Job " + jobResult.getJobId() + " succeeded with result: " + jobResult.getData().length + " bytes");
                             } else {
-                                this.logger.info("Job " + jobResult.getJobId() + "failed with error code " + jobResult.getErrorCode() + ": " + jobResult.getErrorMessage());
+                                this.logger.info("Job " + jobResult.getJobId() + " failed with error code " + jobResult.getErrorCode() + ": " + jobResult.getErrorMessage());
                             }
 
                             this.endJobCallback.accept(jobResult);
