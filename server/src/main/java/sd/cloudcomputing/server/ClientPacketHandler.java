@@ -4,17 +4,18 @@ import sd.cloudcomputing.common.JobRequest;
 import sd.cloudcomputing.common.logging.Logger;
 import sd.cloudcomputing.common.protocol.CSServerStatusRequestPacket;
 import sd.cloudcomputing.common.protocol.GenericPacket;
-import sd.cloudcomputing.common.protocol.SCJobNotEnoughMemoryPacket;
 import sd.cloudcomputing.common.protocol.SCServerStatusResponsePacket;
 
 public class ClientPacketHandler {
 
     private final Logger logger;
     private final ConnectedWorkerManager connectedWorkerManager;
+    private final Server server;
 
-    public ClientPacketHandler(Logger logger, ConnectedWorkerManager connectedWorkerManager) {
+    public ClientPacketHandler(Logger logger, ConnectedWorkerManager connectedWorkerManager, Server server) {
         this.logger = logger;
         this.connectedWorkerManager = connectedWorkerManager;
+        this.server = server;
     }
 
     public void handlePacket(ClientConnection connection, GenericPacket packet) {
@@ -22,12 +23,7 @@ public class ClientPacketHandler {
         switch (packet.id()) {
             case JobRequest.PACKET_ID -> {
                 JobRequest jobRequest = (JobRequest) packet.content();
-                logger.info("Received job request with id " + jobRequest.jobId() + " and " + jobRequest.data().length + " bytes of data from " + client.getName());
-                if (!connectedWorkerManager.scheduleJob(jobRequest)) {
-                    logger.warn("No memory for " + jobRequest.jobId() + " from " + client.getName() + " with " + jobRequest.memoryNeeded() + " memory needed");
-                    SCJobNotEnoughMemoryPacket notEnoughMemoryPacket = new SCJobNotEnoughMemoryPacket(jobRequest.jobId());
-                    connection.enqueuePacket(new GenericPacket(SCJobNotEnoughMemoryPacket.PACKET_ID, notEnoughMemoryPacket));
-                }
+                server.queueClientJobRequest(client, connection, jobRequest);
             }
             case CSServerStatusRequestPacket.PACKET_ID -> {
                 logger.info("Received server status request from " + client.getName());

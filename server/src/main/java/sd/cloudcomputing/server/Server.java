@@ -1,9 +1,13 @@
 package sd.cloudcomputing.server;
 
+import sd.cloudcomputing.common.JobRequest;
+import sd.cloudcomputing.common.JobResult;
 import sd.cloudcomputing.common.concurrent.SynchronizedList;
 import sd.cloudcomputing.common.logging.Logger;
 import sd.cloudcomputing.common.logging.impl.StdoutLogger;
 import sd.cloudcomputing.common.logging.impl.ThreadPrefixedLoggerFormat;
+import sd.cloudcomputing.common.protocol.GenericPacket;
+import sd.cloudcomputing.common.protocol.SCJobNotEnoughMemoryPacket;
 import sd.cloudcomputing.common.serialization.Frost;
 
 import java.io.IOException;
@@ -17,21 +21,25 @@ public class Server {
     private final Logger logger;
     private final ConnectedWorkerManager connectedWorkerManager;
 
-    private final SynchronizedList<ClientConnection> clientConnections;
+    private final ClientConnectionManager clientConnectionManager;
+    private final ClientManager clientManager;
+    private final ClientPacketHandler clientPacketHandler;
+
+    private final JobMappingService jobMappingService;
+
     private boolean running;
 
     private Thread workerConnectionHandler;
-    private final ClientManager clientManager;
     private Thread clientConnectionHandler;
-    private final ClientPacketHandler clientPacketHandler;
 
     public Server(Frost frost) {
         this.frost = frost;
         this.logger = new StdoutLogger(new ThreadPrefixedLoggerFormat());
-        this.clientConnections = new SynchronizedList<>();
+        this.clientConnectionManager = new ClientConnectionManager();
         this.clientManager = new ClientManager();
         this.connectedWorkerManager = new ConnectedWorkerManager();
-        this.clientPacketHandler = new ClientPacketHandler(this.logger, this.connectedWorkerManager);
+        this.jobMappingService = new JobMappingService();
+        this.clientPacketHandler = new ClientPacketHandler(this.logger, this.connectedWorkerManager, this);
     }
 
     public void run(int serverPort, int workerConnectionServerPort) {
@@ -44,13 +52,45 @@ public class Server {
         this.clientConnectionHandler = new Thread(() -> runClientConnectionHandler(serverPort), "Client-Connection-Handler-Thread");
         this.clientConnectionHandler.start();
 
-
         try {
             this.workerConnectionHandler.join();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
         stop();
+    }
+
+    public void queueClientJobRequest(Client client, ClientConnection clientConnection, JobRequest clientJobRequest) {
+        JobRequest serverJobRequest = this.jobMappingService.mapClientRequestToServerRequest(client, clientJobRequest);
+        logger.info("Received job request with id (client: " + clientJobRequest.jobId() + " server: " + serverJobRequest.jobId() + ") " +
+                "and " + serverJobRequest.data().length + " bytes of data from " + client.getName());
+
+        if (!connectedWorkerManager.scheduleJob(serverJobRequest)) {
+            this.jobMappingService.deleteMapping(serverJobRequest.jobId());
+
+            logger.warn("No memory for " + clientJobRequest.jobId() + " from " + client.getName() + " with " + clientJobRequest.memoryNeeded() + " memory needed");
+            SCJobNotEnoughMemoryPacket notEnoughMemoryPacket = new SCJobNotEnoughMemoryPacket(clientJobRequest.jobId());
+            clientConnection.enqueuePacket(new GenericPacket(SCJobNotEnoughMemoryPacket.PACKET_ID, notEnoughMemoryPacket));
+        }
+    }
+
+    public void queueJobResultToClient(JobResult jobResult) {
+        int serverJobId = jobResult.getJobId();
+
+        Client client = this.jobMappingService.retrieveClientFromServerJobId(serverJobId);
+        JobResult clientJobResult = this.jobMappingService.retrieveClientResultFromServerResult(jobResult);
+        if (client == null || clientJobResult == null) {
+            this.logger.error("Race condition on job result with id " + serverJobId + ". No client or job result found for this job id");
+            return;
+        }
+
+        ClientConnection clientConnection = this.clientConnectionManager.getClientConnection(client);
+        if (clientConnection == null) { // requirements has not specified what should happen in this case, so we will just ignore the result
+            this.logger.warn("Client " + client.getName() + " disconnected before receiving job result " + clientJobResult.getJobId());
+            return;
+        }
+
+        clientConnection.enqueuePacket(new GenericPacket(JobResult.PACKET_ID, clientJobResult));
     }
 
     /**
@@ -68,7 +108,7 @@ public class Server {
                     Socket workerSocket = serverSocket.accept();
                     logger.info("Received connection from worker " + workerSocket.getInetAddress() + ":" + workerSocket.getPort() + ". Waiting for handshake...");
                     Thread connectionThread = new Thread(() -> {
-                        WorkerConnection workerConnection = new WorkerConnection(this.logger, this.frost, workerSocket, connectedWorkerManager);
+                        WorkerConnection workerConnection = new WorkerConnection(this.logger, this.frost, workerSocket, this, connectedWorkerManager);
                         if (workerConnection.start()) {
                             this.connectedWorkerManager.addConnectedWorker(workerConnection);
                         }
@@ -101,10 +141,8 @@ public class Server {
                     Socket clientSocket = serverSocket.accept();
                     logger.info("Received connection from client " + clientSocket.getInetAddress() + ":" + clientSocket.getPort() + ". Waiting for authentication...");
                     Thread connectionThread = new Thread(() -> {
-                        ClientConnection clientConnection = new ClientConnection(this.logger, this.frost, this.clientManager, clientSocket, this.clientPacketHandler);
-                        if (clientConnection.start()) {
-                            this.clientConnections.add(clientConnection);
-                        }
+                        ClientConnection clientConnection = new ClientConnection(this.logger, this.frost, this.clientManager, clientSocket, clientConnectionManager, this.clientPacketHandler);
+                        clientConnection.start();
                     }, "Client-Connection-Thread-" + currentConnectionId++); // Only this thread increments the id, no need to synchronize
 
                     pendingConnections.add(connectionThread);
@@ -134,7 +172,7 @@ public class Server {
         this.running = false;
         this.connectedWorkerManager.closeAll();
         this.workerConnectionHandler.interrupt();
-        this.clientConnections.forEach(ClientConnection::disconnect);
+        this.clientConnectionManager.disconnectAll();
         this.clientConnectionHandler.interrupt();
     }
 

@@ -11,6 +11,8 @@ import java.io.IOException;
 
 public class JobResult {
 
+    public static final int PACKET_ID = 2;
+
     private final int jobId;
     private final ResultType resultType;
     private final byte[] data;

@@ -15,12 +15,14 @@ import java.net.Socket;
 
 public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> {
 
+    private final Server server;
     private final SynchronizedMap<Integer, JobRequest> pendingJobRequests;
     private final ConnectedWorkerManager connectedWorkerManager;
     private int maxMemoryCapacity;
 
-    public WorkerConnection(Logger logger, Frost frost, Socket socket, ConnectedWorkerManager connectedWorkerManager) {
+    public WorkerConnection(Logger logger, Frost frost, Socket socket, Server server, ConnectedWorkerManager connectedWorkerManager) {
         super(JobRequest.class, JobResult.class, logger, frost, socket);
+        this.server = server;
         this.connectedWorkerManager = connectedWorkerManager;
         this.pendingJobRequests = new SynchronizedMap<>();
     }
@@ -45,6 +47,8 @@ public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> 
         if (jobRequest == null) {
             super.getLogger().warn("Not pending job request: " + jobResult.getJobId() + ". Race condition?");
         }
+
+        server.queueJobResultToClient(jobResult);
     }
 
     public record Status(int jobsRunning, int memoryCapacity, int currentEstimatedMemoryUsage) {
@@ -71,10 +75,6 @@ public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> 
     public void onDisconnect() {
         super.getLogger().info("Worker disconnected");
         connectedWorkerManager.notifyDisconnect(this);
-    }
-
-    public int getAmountOfJobsRunning() {
-        return pendingJobRequests.size();
     }
 
     public boolean start() {

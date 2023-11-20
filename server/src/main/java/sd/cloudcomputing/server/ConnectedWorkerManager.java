@@ -6,7 +6,6 @@ import sd.cloudcomputing.common.protocol.SCServerStatusResponsePacket;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 
 public class ConnectedWorkerManager {
 
@@ -29,18 +28,11 @@ public class ConnectedWorkerManager {
     public WorkerConnection findAvailableWorker(int memoryNeeded) {
         workerConnections.internalLock();
         try {
-            List<WorkerConnection> internalList = workerConnections.getInternalList();
-            for (WorkerConnection workerConnection : internalList) {
-                if (workerConnection.getMaxMemoryCapacity() >= memoryNeeded) {
-                    return workerConnection;
-                }
-            }
-            Optional<WorkerConnection> first = internalList.stream()
+            return workerConnections.getInternalList().stream()
                     .sorted(Comparator.comparingInt(WorkerConnection::getEstimatedFreeMemory))
                     .filter(workerConnection -> workerConnection.getMaxMemoryCapacity() >= memoryNeeded)
-                    .findFirst();
-
-            return first.orElse(null);
+                    .findFirst()
+                    .orElse(null);
         } finally {
             workerConnections.internalUnlock();
         }

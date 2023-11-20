@@ -3,6 +3,7 @@ package sd.cloudcomputing.common.concurrent;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 public class SynchronizedMap<T, V> {
@@ -87,4 +88,12 @@ public class SynchronizedMap<T, V> {
     }
 
 
+    public void forEach(BiConsumer<T, V> operation) {
+        lock.lock();
+        try {
+            this.map.forEach(operation);
+        } finally {
+            lock.unlock();
+        }
+    }
 }

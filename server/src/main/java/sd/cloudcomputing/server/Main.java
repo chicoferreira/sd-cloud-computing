@@ -20,6 +20,7 @@ public class Main {
 
         GenericPacketSerializer serializer = new GenericPacketSerializer();
         serializer.registerPacketId(JobRequest.PACKET_ID, JobRequest.class);
+        serializer.registerPacketId(JobResult.PACKET_ID, JobResult.class);
         serializer.registerPacketId(CSServerStatusRequestPacket.PACKET_ID, CSServerStatusRequestPacket.class);
         serializer.registerPacketId(SCJobNotEnoughMemoryPacket.PACKET_ID, SCJobNotEnoughMemoryPacket.class);
         serializer.registerPacketId(SCServerStatusResponsePacket.PACKET_ID, SCServerStatusResponsePacket.class);
