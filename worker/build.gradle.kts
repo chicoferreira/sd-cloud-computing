@@ -1,18 +1,15 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 plugins {
     id("java")
     id("application")
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 val main = "sd.cloudcomputing.worker.Main"
 
 application {
     mainClass.set(main)
-}
-
-tasks.withType<Jar> {
-    manifest {
-        attributes["Main-Class"] = main
-    }
 }
 
 group = "sd-grupo-1"
@@ -35,20 +32,9 @@ tasks.test {
 }
 
 tasks {
-    register("fatJar", Jar::class.java) {
-        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-
+    named<ShadowJar>("shadowJar") {
         manifest {
-            attributes("Main-Class" to main)
+            attributes(mapOf("Main-Class" to main))
         }
-
-        from(configurations.runtimeClasspath.get()
-                .onEach { println("add from dependencies: ${it.name}") }
-                .map { if (it.isDirectory) it else zipTree(it) }
-        )
-
-        val sourcesMain = sourceSets.main.get()
-
-        from(sourcesMain.output)
     }
 }

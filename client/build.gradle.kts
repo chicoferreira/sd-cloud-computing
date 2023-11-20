@@ -1,6 +1,9 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 plugins {
     id("java")
     id("application")
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 val main = "sd.cloudcomputing.client.Main"
@@ -9,11 +12,20 @@ application {
     mainClass.set(main)
 }
 
-tasks.withType<Jar> {
-    manifest {
-        attributes["Main-Class"] = main
+tasks {
+    named<ShadowJar>("shadowJar") {
+        manifest {
+            attributes(mapOf("Main-Class" to main))
+        }
     }
 }
+
+tasks {
+    build {
+        dependsOn(named<ShadowJar>("shadowJar"))
+    }
+}
+
 
 group = "sd-grupo-1"
 version = "1.0-SNAPSHOT"

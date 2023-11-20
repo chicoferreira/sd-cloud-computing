@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: worker
+  labels:
+    app: sd-cloud-computing
+    tier: worker
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      tier: worker
+  template:
+    metadata:
+      labels:
+        tier: worker
+    spec:
+      containers:
+        - name: worker
+          image: sd-cloud-computing-worker
