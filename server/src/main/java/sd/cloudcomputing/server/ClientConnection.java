@@ -68,12 +68,11 @@ public class ClientConnection extends AbstractConnection<GenericPacket, GenericP
     }
 
     @Override
-    protected GenericPacket getNextPacketToWrite() throws InterruptedException {
-        GenericPacket nextPacketToWrite = super.getNextPacketToWrite();
-        if (nextPacketToWrite.content() instanceof JobResult jobResult) {
+    protected GenericPacket mapPacketBeforeSend(GenericPacket packet) {
+        if (packet.content() instanceof JobResult jobResult) {
             super.getLogger().info("Sending job result " + jobResult.getJobId() + " with " + jobResult.getResultType() + " to " + client.getName());
         }
-        return nextPacketToWrite;
+        return packet;
     }
 
     @Override

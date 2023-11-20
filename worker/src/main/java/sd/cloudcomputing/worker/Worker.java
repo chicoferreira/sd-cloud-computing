@@ -35,8 +35,12 @@ public class Worker {
     }
 
     public void stop() {
-        this.serverConnection.disconnect();
-        this.workerScheduler.stop();
+        if (this.serverConnection != null) {
+            this.serverConnection.disconnect();
+        }
+        if (this.workerScheduler != null) {
+            this.workerScheduler.stop();
+        }
 
         logger.info("Shutting down worker...");
     }

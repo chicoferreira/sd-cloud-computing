@@ -55,12 +55,15 @@ public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> 
     }
 
     @Override
-    public JobRequest getNextPacketToWrite() throws InterruptedException {
-        JobRequest jobRequest = super.getNextPacketToWrite();
-        pendingJobRequests.put(jobRequest.jobId(), jobRequest);
+    public void enqueuePacket(JobRequest packet) {
+        this.pendingJobRequests.put(packet.jobId(), packet);
+        super.enqueuePacket(packet);
+    }
 
-        super.getLogger().info("Sending job request with id " + jobRequest.jobId() + " and " + jobRequest.data().length + " bytes of data");
-        return jobRequest;
+    @Override
+    protected JobRequest mapPacketBeforeSend(JobRequest packet) {
+        super.getLogger().info("Sending job request with id " + packet.jobId() + " and " + packet.data().length + " bytes of data");
+        return super.mapPacketBeforeSend(packet);
     }
 
     private void performHandshake() throws SerializationException, IOException {

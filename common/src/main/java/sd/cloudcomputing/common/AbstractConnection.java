@@ -95,14 +95,20 @@ public abstract class AbstractConnection<W, R> implements AutoCloseable {
         return running && socket.isConnected();
     }
 
-    protected W getNextPacketToWrite() throws InterruptedException {
-        return writeQueue.take();
+    /**
+     * Used when a connection may want to do something with the packet before sending it
+     *
+     * @param packet Packet to map
+     * @return The mapped packet
+     */
+    protected W mapPacketBeforeSend(W packet) {
+        return packet;
     }
 
     private void runWrite() {
         try {
             while (running) {
-                W packet = getNextPacketToWrite();
+                W packet = mapPacketBeforeSend(writeQueue.take());
                 SerializeOutput serializeOutput = socket.writeEnd();
                 try {
                     frost.writeSerializable(packet, writePacketClass, serializeOutput);
