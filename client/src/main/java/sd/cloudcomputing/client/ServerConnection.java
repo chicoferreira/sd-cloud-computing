@@ -4,10 +4,7 @@ import sd.cloudcomputing.common.AbstractConnection;
 import sd.cloudcomputing.common.JobRequest;
 import sd.cloudcomputing.common.concurrent.SynchronizedInteger;
 import sd.cloudcomputing.common.logging.Logger;
-import sd.cloudcomputing.common.protocol.CSAuthPacket;
-import sd.cloudcomputing.common.protocol.CSServerStatusRequestPacket;
-import sd.cloudcomputing.common.protocol.GenericPacket;
-import sd.cloudcomputing.common.protocol.SCAuthResult;
+import sd.cloudcomputing.common.protocol.*;
 import sd.cloudcomputing.common.serialization.Frost;
 import sd.cloudcomputing.common.serialization.SerializationException;
 import sd.cloudcomputing.common.serialization.SerializeInput;
@@ -62,7 +59,24 @@ public class ServerConnection extends AbstractConnection<GenericPacket, GenericP
 
     @Override
     public void handlePacket(GenericPacket packet) {
-        super.getLogger().info("Received packet " + packet.content());
+        switch (packet.id()) {
+            case SCJobNotEnoughMemoryPacket.PACKET_ID:
+                SCJobNotEnoughMemoryPacket notEnoughMemoryPacket = (SCJobNotEnoughMemoryPacket) packet.content();
+                getLogger().info("Job " + notEnoughMemoryPacket.jobId() + " failed due to not enough memory");
+                break;
+            case SCServerStatusResponsePacket.PACKET_ID:
+                SCServerStatusResponsePacket responsePacket = (SCServerStatusResponsePacket) packet.content();
+                getLogger().info("Server status (" + this.getSocket().getAddressWithPort() + "): ");
+                getLogger().info(" - Connected workers: " + responsePacket.connectedWorkers());
+                getLogger().info(" - Total capacity: " + responsePacket.totalCapacity() + "MB");
+                getLogger().info(" - Max possible memory: " + responsePacket.maxPossibleMemory() + "MB");
+                getLogger().info(" - Memory usage: " + responsePacket.memoryUsagePercentage() + "%");
+                getLogger().info(" - Jobs running: " + responsePacket.jobsCurrentlyRunning());
+                break;
+            default:
+                getLogger().warn("Unknown packet (id=" + packet.id() + "): " + packet.content());
+                break;
+        }
     }
 
     @Override
