@@ -59,27 +59,18 @@ public class ConnectedWorkerManager {
     }
 
     public SCServerStatusResponsePacket getServerStatus() {
-        workerConnections.internalLock();
-        try {
-            List<WorkerConnection.Status> workerStatuses = workerConnections
-                    .getInternalList()
-                    .stream()
-                    .map(WorkerConnection::getStatus)
-                    .toList();
+        List<WorkerConnection.Status> workerStatuses = workerConnections.map(WorkerConnection::getStatus);
 
-            int totalCapacity = workerStatuses.stream().mapToInt(WorkerConnection.Status::memoryCapacity).sum();
-            int totalMemoryUsage = workerStatuses.stream().mapToInt(WorkerConnection.Status::currentEstimatedMemoryUsage).sum();
-            int memoryUsagePercentage = (int) (((double) totalMemoryUsage / (double) totalCapacity) * 100);
+        int totalCapacity = workerStatuses.stream().mapToInt(WorkerConnection.Status::memoryCapacity).sum();
+        int totalMemoryUsage = workerStatuses.stream().mapToInt(WorkerConnection.Status::currentEstimatedMemoryUsage).sum();
+        int memoryUsagePercentage = (int) (((double) totalMemoryUsage / (double) totalCapacity) * 100);
 
-            return new SCServerStatusResponsePacket(
-                    workerStatuses.size(),
-                    totalCapacity,
-                    workerStatuses.stream().mapToInt(WorkerConnection.Status::memoryCapacity).max().orElse(0),
-                    memoryUsagePercentage,
-                    workerStatuses.stream().mapToInt(WorkerConnection.Status::jobsRunning).sum()
-            );
-        } finally {
-            workerConnections.internalUnlock();
-        }
+        return new SCServerStatusResponsePacket(
+                workerStatuses.size(),
+                totalCapacity,
+                workerStatuses.stream().mapToInt(WorkerConnection.Status::memoryCapacity).max().orElse(0),
+                memoryUsagePercentage,
+                workerStatuses.stream().mapToInt(WorkerConnection.Status::jobsRunning).sum()
+        );
     }
 }
