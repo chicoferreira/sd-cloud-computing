@@ -2,6 +2,8 @@ package sd.cloudcomputing.client.command;
 
 import sd.cloudcomputing.common.logging.Logger;
 
+import java.util.Comparator;
+
 public class HelpCommand extends AbstractCommand {
 
     private final CommandManager commandManager;
@@ -14,8 +16,9 @@ public class HelpCommand extends AbstractCommand {
     @Override
     public void execute(Logger logger, String[] args) {
         logger.info("Available commands:");
-        for (Command command : commandManager.getAvailableCommands()) {
-            logger.info(" - " + command.getUsage());
-        }
+        commandManager.getAvailableCommands()
+                .stream()
+                .sorted(Comparator.comparing(Command::getName))
+                .forEach(command -> logger.info(" - " + command.getUsage()));
     }
 }
