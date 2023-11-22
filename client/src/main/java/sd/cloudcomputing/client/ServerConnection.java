@@ -2,6 +2,7 @@ package sd.cloudcomputing.client;
 
 import sd.cloudcomputing.common.AbstractConnection;
 import sd.cloudcomputing.common.JobRequest;
+import sd.cloudcomputing.common.JobResult;
 import sd.cloudcomputing.common.concurrent.SynchronizedInteger;
 import sd.cloudcomputing.common.logging.Logger;
 import sd.cloudcomputing.common.protocol.*;
@@ -72,6 +73,17 @@ public class ServerConnection extends AbstractConnection<GenericPacket, GenericP
                 getLogger().info(" - Max possible memory: " + responsePacket.maxPossibleMemory() + "MB");
                 getLogger().info(" - Memory usage: " + responsePacket.memoryUsagePercentage() + "%");
                 getLogger().info(" - Jobs running: " + responsePacket.jobsCurrentlyRunning());
+                break;
+            case JobResult.PACKET_ID:
+                JobResult jobResult = (JobResult) packet.content();
+                getLogger().info(switch (jobResult) {
+                    case JobResult.Success success ->
+                            "Received job id " + success.jobId() + " with success with " + success.data().length + " bytes of data";
+                    case JobResult.Failure failure ->
+                            "Received job id " + failure.jobId() + "with error code " + failure.errorCode() + " and message " + failure.errorCode();
+                });
+
+                application.notifyJobResult(jobResult);
                 break;
             default:
                 getLogger().warn("Unknown packet (id=" + packet.id() + "): " + packet.content());

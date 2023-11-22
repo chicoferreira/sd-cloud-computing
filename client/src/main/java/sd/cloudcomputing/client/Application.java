@@ -8,11 +8,13 @@ import org.jline.reader.UserInterruptException;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import sd.cloudcomputing.client.command.CommandManager;
+import sd.cloudcomputing.common.JobResult;
 import sd.cloudcomputing.common.logging.Console;
 import sd.cloudcomputing.common.logging.impl.DefaultLoggerFormat;
 import sd.cloudcomputing.common.logging.impl.JLineConsole;
 import sd.cloudcomputing.common.serialization.Frost;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.function.Supplier;
@@ -103,5 +105,23 @@ public class Application {
 
     public void notifyServerDisconnect() {
         this.currentConnection = null;
+    }
+
+    public void notifyJobResult(JobResult jobResult) {
+        switch (jobResult) {
+            case JobResult.Success success -> {
+                console.info("Job " + success.jobId() + " completed successfully");
+                console.info("Data saved to result-" + success.jobId() + ".txt");
+                try {
+                    FileOutputStream fileOutputStream = new FileOutputStream("result-" + jobResult.jobId() + ".txt");
+                    fileOutputStream.write(success.data());
+                    fileOutputStream.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            case JobResult.Failure failure ->
+                    console.error("Job " + failure.jobId() + " failed with error code " + failure.errorCode() + ": " + failure.errorMessage());
+        }
     }
 }
