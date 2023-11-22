@@ -19,6 +19,7 @@ public class CommandManager {
         register(new JobCommand(application));
         register(new StatusCommand(application));
         register(new DisconnectCommand(application));
+        register(new ExitCommand(application));
     }
 
     private void register(Command command) {

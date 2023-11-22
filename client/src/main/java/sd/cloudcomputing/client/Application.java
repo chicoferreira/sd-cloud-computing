@@ -130,4 +130,8 @@ public class Application {
                     console.error("Job " + failure.jobId() + " failed with error code " + failure.errorCode() + ": " + failure.errorMessage());
         }
     }
+
+    public void exit() {
+        this.running = false;
+    }
 }

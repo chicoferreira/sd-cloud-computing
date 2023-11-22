@@ -16,6 +16,7 @@ public class JobResultFileWorker {
     private final Logger logger;
     private final BoundedBuffer<JobResult.Success> queue;
     private Thread thread;
+    private boolean running;
 
     public JobResultFileWorker(Logger logger) {
         this.logger = logger;
@@ -27,8 +28,9 @@ public class JobResultFileWorker {
     }
 
     public void run() {
+        this.running = true;
         this.thread = new Thread(() -> {
-            while (true) {
+            while (this.running) {
                 try {
                     JobResult.Success success = queue.take();
                     save(success);
@@ -56,6 +58,7 @@ public class JobResultFileWorker {
     }
 
     public void stop() {
+        this.running = false;
         if (this.thread != null) {
             this.thread.interrupt();
         }
