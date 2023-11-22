@@ -1,6 +1,7 @@
 plugins {
     id("java")
     id("application")
+    id("com.github.johnrengelman.shadow") version "7.1.2"
 }
 
 val main = "sd.cloudcomputing.client.Main"
@@ -34,4 +35,8 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+tasks.build {
+    dependsOn("shadowJar")
 }

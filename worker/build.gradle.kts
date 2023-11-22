@@ -1,6 +1,7 @@
 plugins {
     id("java")
     id("application")
+    id("com.github.johnrengelman.shadow") version "7.1.2"
 }
 
 val main = "sd.cloudcomputing.worker.Main"
@@ -34,21 +35,6 @@ tasks.test {
     useJUnitPlatform()
 }
 
-tasks {
-    register("fatJar", Jar::class.java) {
-        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-
-        manifest {
-            attributes("Main-Class" to main)
-        }
-
-        from(configurations.runtimeClasspath.get()
-                .onEach { println("add from dependencies: ${it.name}") }
-                .map { if (it.isDirectory) it else zipTree(it) }
-        )
-
-        val sourcesMain = sourceSets.main.get()
-
-        from(sourcesMain.output)
-    }
+tasks.build {
+    dependsOn("shadowJar")
 }
