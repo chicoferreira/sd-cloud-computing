@@ -41,11 +41,11 @@ public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> 
 
     @Override
     public void handlePacket(JobResult jobResult) {
-        super.getLogger().info("Received job result " + jobResult.getJobId() + " with " + jobResult.getResultType());
+        super.getLogger().info("Received job result " + jobResult.jobId() + " with " + jobResult.resultType());
 
-        JobRequest jobRequest = pendingJobRequests.remove(jobResult.getJobId());
+        JobRequest jobRequest = pendingJobRequests.remove(jobResult.jobId());
         if (jobRequest == null) {
-            super.getLogger().warn("Not pending job request: " + jobResult.getJobId() + ". Race condition?");
+            super.getLogger().warn("Not pending job request: " + jobResult.jobId() + ". Race condition?");
         }
 
         server.queueJobResultToClient(jobResult);

@@ -1,7 +1,6 @@
 package sd.cloudcomputing.common;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import sd.cloudcomputing.common.serialization.Frost;
 import sd.cloudcomputing.common.serialization.Serialize;
 import sd.cloudcomputing.common.serialization.SerializeInput;
@@ -9,84 +8,61 @@ import sd.cloudcomputing.common.serialization.SerializeOutput;
 
 import java.io.IOException;
 
-public class JobResult {
+public sealed interface JobResult permits JobResult.Success, JobResult.Failure {
 
-    public static final int PACKET_ID = 2;
+    int PACKET_ID = 2;
 
-    private final int jobId;
-    private final ResultType resultType;
-    private final byte[] data;
-    private final int errorCode;
-    private final String errorMessage;
-
-    public enum ResultType {
-        SUCCESS, FAILURE
+    static JobResult success(int jobId, byte[] data) {
+        return new Success(jobId, data);
     }
 
-    JobResult(int jobId, ResultType resultType, byte[] data, int errorCode, String errorMessage) {
-        this.jobId = jobId;
-        this.resultType = resultType;
-        this.data = data;
-        this.errorCode = errorCode;
-        this.errorMessage = errorMessage;
+    static JobResult failure(int jobId, int errorCode, String errorMessage) {
+        return new Failure(jobId, errorCode, errorMessage);
     }
 
-    public static JobResult success(int jobId, byte[] data) {
-        return new JobResult(jobId, ResultType.SUCCESS, data, -1, null);
+    default ResultType resultType() {
+        return switch (this) {
+            case Success ignored -> ResultType.SUCCESS;
+            case Failure ignored -> ResultType.FAILURE;
+        };
     }
 
-    public static JobResult failure(int jobId, int errorCode, String errorMessage) {
-        return new JobResult(jobId, ResultType.FAILURE, null, errorCode, errorMessage);
+    int jobId();
+
+    enum ResultType {
+        SUCCESS,
+        FAILURE
     }
 
-    public int getJobId() {
-        return jobId;
+    record Success(int jobId, byte[] data) implements JobResult {
     }
 
-    public ResultType getResultType() {
-        return resultType;
+    record Failure(int jobId, int errorCode, String errorMessage) implements JobResult {
     }
 
-    public byte @Nullable("null when ResultType=FAILURE") [] getData() {
-        return data;
-    }
-
-    public int getErrorCode() {
-        return this.errorCode;
-    }
-
-    public String getErrorMessage() {
-        return this.errorMessage;
-    }
-
-    public static class Serialization implements Serialize<JobResult> {
+    class Serialization implements Serialize<JobResult> {
 
         @Override
         public @NotNull JobResult deserialize(SerializeInput input, Frost frost) throws IOException {
-            ResultType type = frost.readBoolean(input) ? ResultType.SUCCESS : ResultType.FAILURE;
-            return switch (type) {
-                case FAILURE -> {
-                    int jobId = frost.readInt(input);
-                    String errorMessage = frost.readString(input);
-                    int errorCode = frost.readInt(input);
-                    yield JobResult.failure(jobId, errorCode, errorMessage);
-                }
-                case SUCCESS -> JobResult.success(frost.readInt(input), frost.readBytes(input));
-            };
+            if (frost.readBoolean(input)) {
+                return JobResult.success(frost.readInt(input), frost.readBytes(input));
+            } else {
+                return JobResult.failure(frost.readInt(input), frost.readInt(input), frost.readString(input));
+            }
         }
 
         @Override
-        public void serialize(JobResult object, SerializeOutput output, Frost frost) throws IOException {
-            frost.writeBoolean(object.getResultType() == ResultType.SUCCESS, output);
-            switch (object.getResultType()) {
-                case FAILURE -> {
-                    frost.writeInt(object.getJobId(), output);
-                    frost.writeString(object.getErrorMessage(), output);
-                    frost.writeInt(object.getErrorCode(), output);
+        public void serialize(JobResult result, SerializeOutput output, Frost frost) throws IOException {
+            frost.writeBoolean(result instanceof Success, output);
+            switch (result) {
+                case Failure failure -> {
+                    frost.writeInt(failure.jobId(), output);
+                    frost.writeInt(failure.errorCode(), output);
+                    frost.writeString(failure.errorMessage(), output);
                 }
-                case SUCCESS -> {
-                    frost.writeInt(object.getJobId(), output);
-                    frost.writeBytes(object.getData(), output);
+                case Success success -> {
+                    frost.writeInt(success.jobId(), output);
+                    frost.writeBytes(success.data(), output);
                 }
             }
         }

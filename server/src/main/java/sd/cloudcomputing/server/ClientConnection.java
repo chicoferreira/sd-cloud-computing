@@ -70,7 +70,7 @@ public class ClientConnection extends AbstractConnection<GenericPacket, GenericP
     @Override
     protected GenericPacket mapPacketBeforeSend(GenericPacket packet) {
         if (packet.content() instanceof JobResult jobResult) {
-            super.getLogger().info("Sending job result " + jobResult.getJobId() + " with " + jobResult.getResultType() + " to " + client.getName());
+            super.getLogger().info("Sending job result " + jobResult.jobId() + " with " + jobResult.resultType() + " to " + client.getName());
         }
         return packet;
     }

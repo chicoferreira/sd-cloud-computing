@@ -10,6 +10,7 @@ import sd.cloudcomputing.common.serialization.SerializeOutput;
 import java.io.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 class JobResultSerializationTest {
 
@@ -37,14 +38,17 @@ class JobResultSerializationTest {
 
         JobResult deserialized = frost.readSerializable(JobResult.class, input);
 
-        assertEquals(1, deserialized.getJobId());
-        assertEquals(JobResult.ResultType.SUCCESS, deserialized.getResultType());
-        assertEquals(5, deserialized.getData().length);
-        assertEquals(1, deserialized.getData()[0]);
-        assertEquals(2, deserialized.getData()[1]);
-        assertEquals(3, deserialized.getData()[2]);
-        assertEquals(4, deserialized.getData()[3]);
-        assertEquals(5, deserialized.getData()[4]);
+        assertInstanceOf(JobResult.Success.class, deserialized);
+
+        JobResult.Success success = (JobResult.Success) deserialized;
+
+        assertEquals(1, success.jobId());
+        assertEquals(5, success.data().length);
+        assertEquals(1, success.data()[0]);
+        assertEquals(2, success.data()[1]);
+        assertEquals(3, success.data()[2]);
+        assertEquals(4, success.data()[3]);
+        assertEquals(5, success.data()[4]);
     }
 
     @Test
@@ -64,9 +68,12 @@ class JobResultSerializationTest {
 
         JobResult deserialized = frost.readSerializable(JobResult.class, input);
 
-        assertEquals(1, deserialized.getJobId());
-        assertEquals(JobResult.ResultType.FAILURE, deserialized.getResultType());
-        assertEquals(-1, deserialized.getErrorCode());
-        assertEquals("error", deserialized.getErrorMessage());
+        assertInstanceOf(JobResult.Failure.class, deserialized);
+
+        JobResult.Failure failure = (JobResult.Failure) deserialized;
+
+        assertEquals(1, failure.jobId());
+        assertEquals(-1, failure.errorCode());
+        assertEquals("error", failure.errorMessage());
     }
 }

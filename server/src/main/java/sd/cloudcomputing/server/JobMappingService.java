@@ -47,14 +47,15 @@ public class JobMappingService {
      * @return The same job result with the client job ID or null if the mapping was not found
      */
     public @Nullable JobResult retrieveClientResultFromServerResult(JobResult jobResult) {
-        Integer clientJobId = serverJobIdToClientJobIdMap.remove(jobResult.getJobId());
+        Integer clientJobId = serverJobIdToClientJobIdMap.remove(jobResult.jobId());
         if (clientJobId == null) {
             return null;
         }
 
-        return switch (jobResult.getResultType()) {
-            case SUCCESS -> JobResult.success(clientJobId, jobResult.getData());
-            case FAILURE -> JobResult.failure(clientJobId, jobResult.getErrorCode(), jobResult.getErrorMessage());
+        return switch (jobResult) {
+            case JobResult.Success success -> JobResult.success(clientJobId, success.data());
+            case JobResult.Failure failure ->
+                    JobResult.failure(clientJobId, failure.errorCode(), failure.errorMessage());
         };
     }
 

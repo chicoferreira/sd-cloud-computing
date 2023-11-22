@@ -82,10 +82,11 @@ public class WorkerScheduler {
 
                             JobResult jobResult = jobExecutor.execute(jobRequest);
 
-                            if (jobResult.getResultType() == JobResult.ResultType.SUCCESS) {
-                                this.logger.info("Job " + jobResult.getJobId() + " succeeded with result: " + jobResult.getData().length + " bytes");
-                            } else {
-                                this.logger.info("Job " + jobResult.getJobId() + " failed with error code " + jobResult.getErrorCode() + ": " + jobResult.getErrorMessage());
+                            switch (jobResult) {
+                                case JobResult.Success success ->
+                                        this.logger.info("Job " + success.jobId() + " succeeded with result: " + success.data().length + " bytes");
+                                case JobResult.Failure failure ->
+                                        this.logger.info("Job " + failure.jobId() + " failed with error code " + failure.errorCode() + ": " + failure.errorMessage());
                             }
 
                             this.endJobCallback.accept(jobResult);

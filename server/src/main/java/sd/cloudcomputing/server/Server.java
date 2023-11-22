@@ -75,7 +75,7 @@ public class Server {
     }
 
     public void queueJobResultToClient(JobResult jobResult) {
-        int serverJobId = jobResult.getJobId();
+        int serverJobId = jobResult.jobId();
 
         Client client = this.jobMappingService.retrieveClientFromServerJobId(serverJobId);
         JobResult clientJobResult = this.jobMappingService.retrieveClientResultFromServerResult(jobResult);
@@ -86,7 +86,7 @@ public class Server {
 
         ClientConnection clientConnection = this.clientConnectionManager.getClientConnection(client);
         if (clientConnection == null) { // requirements has not specified what should happen in this case, so we will just ignore the result
-            this.logger.warn("Client " + client.getName() + " disconnected before receiving job result " + clientJobResult.getJobId());
+            this.logger.warn("Client " + client.getName() + " disconnected before receiving job result " + clientJobResult.jobId());
             return;
         }
 
