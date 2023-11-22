@@ -14,7 +14,6 @@ import sd.cloudcomputing.common.logging.impl.DefaultLoggerFormat;
 import sd.cloudcomputing.common.logging.impl.JLineConsole;
 import sd.cloudcomputing.common.serialization.Frost;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.function.Supplier;
@@ -23,28 +22,38 @@ public class Application {
 
     private final CommandManager commandManager;
     private final Frost frost;
-    private Console console;
+    private final Console console;
+    private final JobResultFileWorker jobResultFileWorker;
+
     private boolean running;
     private ServerConnection currentConnection;
 
-    public Application(Frost frost) {
+    public Application(Frost frost) throws IOException {
         this.frost = frost;
         this.commandManager = new CommandManager(this);
+
+        this.console = createConsole();
+        this.jobResultFileWorker = new JobResultFileWorker(this.console);
     }
 
     public void run() {
-        try {
-            this.running = true;
-            this.console = createConsole();
+        this.running = true;
 
-            this.runCli();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        this.jobResultFileWorker.run();
+        this.runCli();
+
+        stop();
     }
 
-    public void stop() {
+    private void stop() {
         this.running = false;
+
+        if (this.currentConnection != null) {
+            this.currentConnection.disconnect();
+        }
+
+        this.jobResultFileWorker.stop();
+
         console.info("Application stopped");
         try {
             console.close();
@@ -89,7 +98,6 @@ public class Application {
                 String line = console.readInput("client> ");
                 this.commandManager.handleCommand(console, line);
             } catch (EndOfFileException | UserInterruptException ignored) {
-                stop();
                 return;
             }
         }
@@ -110,14 +118,12 @@ public class Application {
     public void notifyJobResult(JobResult jobResult) {
         switch (jobResult) {
             case JobResult.Success success -> {
-                console.info("Job " + success.jobId() + " completed successfully");
-                console.info("Data saved to result-" + success.jobId() + ".txt");
+                console.info("Job " + success.jobId() + " completed successfully with " + success.data().length + " bytes.");
+
                 try {
-                    FileOutputStream fileOutputStream = new FileOutputStream("result-" + jobResult.jobId() + ".txt");
-                    fileOutputStream.write(success.data());
-                    fileOutputStream.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    this.jobResultFileWorker.queueWrite(success);
+                } catch (InterruptedException e) {
+                    console.error("Failed to queue job result for job " + success.jobId() + ": " + e.getMessage());
                 }
             }
             case JobResult.Failure failure ->

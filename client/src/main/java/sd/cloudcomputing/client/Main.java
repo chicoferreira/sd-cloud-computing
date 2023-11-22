@@ -5,9 +5,11 @@ import sd.cloudcomputing.common.JobResult;
 import sd.cloudcomputing.common.protocol.*;
 import sd.cloudcomputing.common.serialization.Frost;
 
+import java.io.IOException;
+
 public class Main {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         Frost frost = new Frost();
         frost.registerSerializer(CSAuthPacket.class, new CSAuthPacket.Serialization());
         frost.registerSerializer(SCAuthResult.class, new SCAuthResult.Serialization());
