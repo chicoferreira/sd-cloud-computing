@@ -37,6 +37,7 @@ public class ClientConnection extends AbstractConnection<GenericPacket, GenericP
 
 
     public void start() {
+        super.getLogger().info("Waiting for client to authenticate...");
         Client client = this.acceptLogin();
         if (client != null) {
             this.getLogger().info("Client " + client.getName() + " authenticated successfully");

@@ -135,7 +135,7 @@ public class Server {
             while (this.running) {
                 try {
                     Socket workerSocket = serverSocket.accept();
-                    logger.info("Received connection from worker " + workerSocket.getInetAddress() + ":" + workerSocket.getPort() + ". Waiting for handshake...");
+                    logger.info("Received connection from worker " + workerSocket.getInetAddress() + ":" + workerSocket.getPort() + ".");
                     Thread connectionThread = new Thread(() -> {
                         WorkerConnection workerConnection = new WorkerConnection(this.logger, this.frost, workerSocket, this, connectedWorkerManager);
                         if (workerConnection.start()) {
@@ -168,7 +168,7 @@ public class Server {
             while (this.running) {
                 try {
                     Socket clientSocket = serverSocket.accept();
-                    logger.info("Received connection from client " + clientSocket.getInetAddress() + ":" + clientSocket.getPort() + ". Waiting for authentication...");
+                    logger.info("Received connection from client " + clientSocket.getInetAddress() + ":" + clientSocket.getPort() + ".");
                     Thread connectionThread = new Thread(() -> {
                         ClientConnection clientConnection = new ClientConnection(this.logger, this.frost, this.clientManager, clientSocket, clientConnectionManager, this.clientPacketHandler);
                         clientConnection.start();

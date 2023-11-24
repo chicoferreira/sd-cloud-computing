@@ -67,6 +67,7 @@ public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> 
     }
 
     private void performHandshake() throws SerializationException, IOException {
+        super.getLogger().info("Performing handshake with worker...");
         SerializeInput input = readEnd();
         WSHandshakePacket wsHandshakePacket = super.getFrost().readSerializable(WSHandshakePacket.class, input);
         super.getLogger().info("Worker connected with max memory capacity of " + wsHandshakePacket.maxMemoryCapacity());
