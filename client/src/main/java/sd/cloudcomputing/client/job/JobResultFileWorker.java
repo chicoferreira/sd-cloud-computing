@@ -1,4 +1,4 @@
-package sd.cloudcomputing.client;
+package sd.cloudcomputing.client.job;
 
 import sd.cloudcomputing.common.JobResult;
 import sd.cloudcomputing.common.concurrent.BoundedBuffer;
@@ -9,12 +9,20 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
+/**
+ * Class responsible for writing job results to files in a queued manner.
+ */
 public class JobResultFileWorker {
 
     private static final Path resultFolder = Path.of("results");
 
+    private final BoundedBuffer<JobResultFile> queue;
+
     private final Logger logger;
-    private final BoundedBuffer<JobResult.Success> queue;
+
+    public void queueWrite(JobResult.Success success, String fileName) throws InterruptedException {
+        this.queue.put(new JobResultFile(fileName, success));
+    }
     private Thread thread;
     private boolean running;
 
@@ -23,17 +31,13 @@ public class JobResultFileWorker {
         this.queue = new BoundedBuffer<>(100);
     }
 
-    public void queueWrite(JobResult.Success success) throws InterruptedException {
-        this.queue.put(success);
-    }
-
     public void run() {
         this.running = true;
         this.thread = new Thread(() -> {
             while (this.running) {
                 try {
-                    JobResult.Success success = queue.take();
-                    save(success);
+                    JobResultFile success = queue.take();
+                    save(success.jobResult(), success.fileName());
                 } catch (InterruptedException ignored) {
                 }
             }
@@ -41,8 +45,7 @@ public class JobResultFileWorker {
         this.thread.start();
     }
 
-    private void save(JobResult.Success success) {
-        String fileName = getFileName(success);
+    private void save(JobResult.Success success, String fileName) {
         Path path = resultFolder.resolve(fileName);
         try {
             this.logger.info("Saving job result for job " + success.jobId() + " to file '" + fileName + "'...");
@@ -53,8 +56,7 @@ public class JobResultFileWorker {
         }
     }
 
-    public String getFileName(JobResult.Success success) {
-        return "job-" + success.jobId() + ".7z"; // The JobFunction will create bytes of a .7z file on success
+    private record JobResultFile(String fileName, JobResult.Success jobResult) {
     }
 
     public void stop() {

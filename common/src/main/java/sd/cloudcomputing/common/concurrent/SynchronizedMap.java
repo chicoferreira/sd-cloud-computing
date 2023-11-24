@@ -1,6 +1,7 @@
 package sd.cloudcomputing.common.concurrent;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
@@ -87,6 +88,14 @@ public class SynchronizedMap<T, V> {
         }
     }
 
+    public List<V> values() {
+        lock.lock();
+        try {
+            return List.copyOf(this.map.values());
+        } finally {
+            lock.unlock();
+        }
+    }
 
     public void forEach(BiConsumer<T, V> operation) {
         lock.lock();

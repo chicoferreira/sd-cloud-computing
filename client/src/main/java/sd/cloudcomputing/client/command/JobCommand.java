@@ -14,7 +14,7 @@ public class JobCommand extends AbstractCommand {
     private final Application application;
 
     public JobCommand(Application application) {
-        super("job", "<file> <memory>");
+        super("job", "<file> <memory> (output path)");
         this.application = application;
     }
 
@@ -58,8 +58,14 @@ public class JobCommand extends AbstractCommand {
             return;
         }
 
-        int jobId = currentServerConnection.scheduleJob(bytes, memory);
-        logger.info("Sent job with id " + jobId + " with " + bytes.length + " bytes of data");
+        String outputFile = args.length > 2 ? args[2] : null;
+
+        int jobId = application.createAndScheduleJobRequest(bytes, memory, outputFile);
+        if (outputFile != null) {
+            logger.info("Sent job with id " + jobId + " with " + bytes.length + " bytes of data (output file: " + outputFile + ")");
+        } else {
+            logger.info("Sent job with id " + jobId + " with " + bytes.length + " bytes of data");
+        }
     }
 
 }

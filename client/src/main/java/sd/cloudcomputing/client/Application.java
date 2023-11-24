@@ -8,6 +8,9 @@ import org.jline.reader.UserInterruptException;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import sd.cloudcomputing.client.command.CommandManager;
+import sd.cloudcomputing.client.job.ClientJob;
+import sd.cloudcomputing.client.job.JobManager;
+import sd.cloudcomputing.client.job.JobResultFileWorker;
 import sd.cloudcomputing.common.JobResult;
 import sd.cloudcomputing.common.logging.Console;
 import sd.cloudcomputing.common.logging.impl.DefaultLoggerFormat;
@@ -24,6 +27,7 @@ public class Application {
     private final Frost frost;
     private final Console console;
     private final JobResultFileWorker jobResultFileWorker;
+    private final JobManager jobManager;
 
     private boolean running;
     private ServerConnection currentConnection;
@@ -34,6 +38,7 @@ public class Application {
 
         this.console = createConsole();
         this.jobResultFileWorker = new JobResultFileWorker(this.console);
+        this.jobManager = new JobManager();
     }
 
     public void run() {
@@ -115,13 +120,35 @@ public class Application {
         this.currentConnection = null;
     }
 
+    public int createAndScheduleJobRequest(byte[] bytes, int neededMemory, @Nullable String outputFileName) {
+        if (!this.isConnected()) {
+            return -1;
+        }
+
+        int jobId = this.currentConnection.scheduleJob(bytes, neededMemory);
+
+        if (outputFileName == null) {
+            outputFileName = getDefaultFileName(jobId);
+        }
+
+        ClientJob clientJob = new ClientJob.Scheduled(jobId, outputFileName, neededMemory, System.currentTimeMillis());
+        this.jobManager.addJob(clientJob);
+        return jobId;
+    }
+
+    private String getDefaultFileName(int jobId) {
+        return "job-" + jobId + ".7z"; // The JobFunction will create bytes of a .7z file on success
+    }
+
     public void notifyJobResult(JobResult jobResult) {
         switch (jobResult) {
             case JobResult.Success success -> {
                 console.info("Job " + success.jobId() + " completed successfully with " + success.data().length + " bytes.");
 
+                ClientJob.Finished clientJob = this.jobManager.registerJobResult(success.jobId(), success);
+                String outputFile = clientJob == null ? getDefaultFileName(jobResult.jobId()) : clientJob.jobOutputFile();
                 try {
-                    this.jobResultFileWorker.queueWrite(success);
+                    this.jobResultFileWorker.queueWrite(success, outputFile);
                 } catch (InterruptedException e) {
                     console.error("Failed to queue job result for job " + success.jobId() + ": " + e.getMessage());
                 }
