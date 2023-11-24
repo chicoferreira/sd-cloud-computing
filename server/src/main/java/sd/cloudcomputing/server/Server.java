@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.List;
 
 public class Server {
 
@@ -62,31 +63,59 @@ public class Server {
 
     public void queueClientJobRequest(Client client, ClientConnection clientConnection, JobRequest clientJobRequest) {
         JobRequest serverJobRequest = this.jobMappingService.mapClientRequestToServerRequest(client, clientJobRequest);
-        logger.info("Received job request with id (client: " + clientJobRequest.jobId() + " server: " + serverJobRequest.jobId() + ") " +
+        queueServerJobRequest(client, clientConnection, clientJobRequest.jobId(), serverJobRequest);
+    }
+
+    private void queueServerJobRequest(Client client, ClientConnection clientConnection, int clientJobId, JobRequest serverJobRequest) {
+        logger.info("Scheduling job request with id (client: " + clientJobId + " server: " + serverJobRequest.jobId() + ") " +
                 "and " + serverJobRequest.data().length + " bytes of data from " + client.getName());
 
         if (!connectedWorkerManager.scheduleJob(serverJobRequest)) {
             this.jobMappingService.deleteMapping(serverJobRequest.jobId());
 
-            logger.warn("No memory for " + clientJobRequest.jobId() + " from " + client.getName() + " with " + clientJobRequest.memoryNeeded() + " memory needed");
-            SCJobNotEnoughMemoryPacket notEnoughMemoryPacket = new SCJobNotEnoughMemoryPacket(clientJobRequest.jobId());
+            logger.warn("No memory for " + clientJobId + " from " + client.getName() + " with " + serverJobRequest.memoryNeeded() + " memory needed");
+            SCJobNotEnoughMemoryPacket notEnoughMemoryPacket = new SCJobNotEnoughMemoryPacket(clientJobId);
             clientConnection.enqueuePacket(new GenericPacket(SCJobNotEnoughMemoryPacket.PACKET_ID, notEnoughMemoryPacket));
         }
     }
 
-    public void queueJobResultToClient(JobResult jobResult) {
-        int serverJobId = jobResult.jobId();
+    /**
+     * Reschedules the given job requests.
+     * Executed when a worker disconnects when it has pending jobs.
+     */
+    public void rescheduleJobs(List<JobRequest> pendingJobRequests) {
+        for (JobRequest serverJobRequest : pendingJobRequests) {
+            JobMappingService.Mapping mapping = jobMappingService.getMappingFromServerJobId(serverJobRequest.jobId());
+            if (mapping == null) return;
 
-        Client client = this.jobMappingService.retrieveClientFromServerJobId(serverJobId);
-        JobResult clientJobResult = this.jobMappingService.retrieveClientResultFromServerResult(jobResult);
-        if (client == null || clientJobResult == null) {
-            this.logger.error("Race condition on job result with id " + serverJobId + ". No client or job result found for this job id");
+            Client client = mapping.client();
+            ClientConnection clientConnection = this.clientConnectionManager.getClientConnection(client);
+            if (clientConnection == null) {
+                this.logger.warn("Client " + client.getName() + " disconnected, no need to reschedule " + serverJobRequest.jobId());
+                continue;
+            }
+
+            queueServerJobRequest(client, clientConnection, mapping.clientJobId(), serverJobRequest);
+        }
+    }
+
+    public void queueJobResultToClient(JobResult serverJobResult) {
+        int serverJobId = serverJobResult.jobId();
+
+        JobMappingService.Mapping mapping = this.jobMappingService.retrieveMappingFromServerJobId(serverJobId);
+        if (mapping == null) {
+            this.logger.error("Race condition on job result with id " + serverJobId + ". No client or job result mapping found for this job id");
             return;
         }
 
+        Client client = mapping.client();
+        int clientJobId = mapping.clientJobId();
+
+        JobResult clientJobResult = serverJobResult.mapId(clientJobId);
+
         ClientConnection clientConnection = this.clientConnectionManager.getClientConnection(client);
-        if (clientConnection == null) { // requirements has not specified what should happen in this case, so we will just ignore the result
-            this.logger.warn("Client " + client.getName() + " disconnected before receiving job result " + clientJobResult.jobId());
+        if (clientConnection == null) { // requirements have not specified what should happen in this case, so we will just ignore the result
+            this.logger.warn("Client " + client.getName() + " disconnected before receiving job result " + clientJobId);
             return;
         }
 

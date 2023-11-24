@@ -78,6 +78,12 @@ public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> 
     public void onDisconnect() {
         super.getLogger().info("Worker disconnected");
         connectedWorkerManager.notifyDisconnect(this);
+
+        int size = pendingJobRequests.size();
+        if (size > 0) {
+            super.getLogger().info("Rescheduling " + size + " pending jobs...");
+            server.rescheduleJobs(this.pendingJobRequests.values());
+        }
     }
 
     public boolean start() {

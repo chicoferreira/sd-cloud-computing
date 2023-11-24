@@ -29,6 +29,13 @@ public sealed interface JobResult permits JobResult.Success, JobResult.Failure {
 
     int jobId();
 
+    default JobResult mapId(int newId) {
+        return switch (this) {
+            case Success success -> JobResult.success(newId, success.data());
+            case Failure failure -> JobResult.failure(newId, failure.errorCode(), failure.errorMessage());
+        };
+    }
+
     enum ResultType {
         SUCCESS,
         FAILURE
