@@ -27,6 +27,7 @@ public class Server {
     private final ClientPacketHandler clientPacketHandler;
 
     private final JobMappingService jobMappingService;
+    private final OvertakingJobSchedulerImpl jobScheduler;
 
     private boolean running;
 
@@ -39,6 +40,7 @@ public class Server {
         this.clientConnectionManager = new ClientConnectionManager();
         this.clientManager = new ClientManager();
         this.connectedWorkerManager = new ConnectedWorkerManager();
+        this.jobScheduler = new OvertakingJobSchedulerImpl(this.connectedWorkerManager, this);
         this.jobMappingService = new JobMappingService();
         this.clientPacketHandler = new ClientPacketHandler(this.logger, this.connectedWorkerManager, this);
     }
@@ -70,7 +72,7 @@ public class Server {
         logger.info("Scheduling job request with id (client: " + clientJobId + " server: " + serverJobRequest.jobId() + ") " +
                 "and " + serverJobRequest.data().length + " bytes of data from " + client.getName());
 
-        if (!connectedWorkerManager.scheduleJob(serverJobRequest)) {
+        if (!jobScheduler.scheduleJob(serverJobRequest)) {
             this.jobMappingService.deleteMapping(serverJobRequest.jobId());
 
             logger.warn("No memory for " + clientJobId + " from " + client.getName() + " with " + serverJobRequest.memoryNeeded() + " memory needed");
@@ -80,26 +82,35 @@ public class Server {
     }
 
     /**
-     * Reschedules the given job requests.
-     * Executed when a worker disconnects when it has pending jobs.
+     * Reschedules the pending job requests from the worker.
      */
-    public void rescheduleJobs(List<JobRequest> pendingJobRequests) {
-        for (JobRequest serverJobRequest : pendingJobRequests) {
-            JobMappingService.Mapping mapping = jobMappingService.getMappingFromServerJobId(serverJobRequest.jobId());
-            if (mapping == null) return;
-
-            Client client = mapping.client();
-            ClientConnection clientConnection = this.clientConnectionManager.getClientConnection(client);
-            if (clientConnection == null) {
-                this.logger.warn("Client " + client.getName() + " disconnected, no need to reschedule " + serverJobRequest.jobId());
-                continue;
-            }
-
-            queueServerJobRequest(client, clientConnection, mapping.clientJobId(), serverJobRequest);
+    public void handleWorkerDisconnect(List<JobRequest> pendingJobRequests) {
+        int size = pendingJobRequests.size();
+        if (size > 0) {
+            this.logger.info("Rescheduling " + size + " pending jobs...");
+            pendingJobRequests.forEach(this::rescheduleJob);
         }
+
+        this.jobScheduler.notifyReschedule(); // also reschedule all jobs that were queued
+    }
+
+    public void rescheduleJob(JobRequest serverJobRequest) {
+        JobMappingService.Mapping mapping = jobMappingService.getMappingFromServerJobId(serverJobRequest.jobId());
+        if (mapping == null) return;
+
+        Client client = mapping.client();
+        ClientConnection clientConnection = this.clientConnectionManager.getClientConnection(client);
+        if (clientConnection == null) {
+            this.logger.warn("Client " + client.getName() + " disconnected, no need to reschedule " + serverJobRequest.jobId());
+            return;
+        }
+
+        queueServerJobRequest(client, clientConnection, mapping.clientJobId(), serverJobRequest);
     }
 
     public void queueJobResultToClient(JobResult serverJobResult) {
+        jobScheduler.notifyReschedule();
+
         int serverJobId = serverJobResult.jobId();
 
         JobMappingService.Mapping mapping = this.jobMappingService.retrieveMappingFromServerJobId(serverJobId);

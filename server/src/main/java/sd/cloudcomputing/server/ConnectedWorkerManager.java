@@ -1,10 +1,8 @@
 package sd.cloudcomputing.server;
 
-import sd.cloudcomputing.common.JobRequest;
 import sd.cloudcomputing.common.concurrent.SynchronizedList;
 import sd.cloudcomputing.common.protocol.SCServerStatusResponsePacket;
 
-import java.util.Comparator;
 import java.util.List;
 
 public class ConnectedWorkerManager {
@@ -15,27 +13,8 @@ public class ConnectedWorkerManager {
         this.workerConnections = new SynchronizedList<>();
     }
 
-    public boolean scheduleJob(JobRequest jobRequest) {
-        WorkerConnection workerConnection = findAvailableWorker(jobRequest.memoryNeeded());
-        if (workerConnection == null) {
-            return false;
-        }
-
-        workerConnection.enqueuePacket(jobRequest);
-        return true;
-    }
-
-    public WorkerConnection findAvailableWorker(int memoryNeeded) {
-        workerConnections.internalLock();
-        try {
-            return workerConnections.getInternalList().stream()
-                    .sorted(Comparator.comparingInt(WorkerConnection::getEstimatedFreeMemory))
-                    .filter(workerConnection -> workerConnection.getMaxMemoryCapacity() >= memoryNeeded)
-                    .findFirst()
-                    .orElse(null);
-        } finally {
-            workerConnections.internalUnlock();
-        }
+    public SynchronizedList<WorkerConnection> getWorkerConnections() {
+        return workerConnections;
     }
 
     public void addConnectedWorker(WorkerConnection workerConnection) {

@@ -97,6 +97,8 @@ public class SynchronizedList<T> {
         }
     }
 
+    // Usafe methods for more complex synchronization
+
     public void internalLock() {
         lock.lock();
     }
