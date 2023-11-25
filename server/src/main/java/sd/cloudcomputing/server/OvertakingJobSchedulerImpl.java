@@ -43,16 +43,14 @@ public class OvertakingJobSchedulerImpl implements JobScheduler {
 
                 int numberOfOvertakes = queuedJobRequest.getNumberOfOvertakes();
 
+                workerConnection = getWorkerWithMostFreeMemory(serverJobRequest.memoryNeeded(), internalList);
+                if (workerConnection == null) { // no worker has enough memory capacity for the job
+                    this.queuedJobRequests.remove(serverJobRequest.jobId()); // job won't be scheduled, no need to keep track of it anymore
+                    return false;
+                }
+
                 if (numberOfOvertakes <= MAX_OVERTAKES) {
-                    // job has no place to run right now,
-                    // but it will be rescheduled later if there are connected workers with enough capacity
-                    return getWorkerMaxCapacity(internalList) >= serverJobRequest.memoryNeeded();
-                } else { // job has been overtaken too many times, schedule now!
-                    workerConnection = getWorkerWithMostFreeMemory(serverJobRequest.memoryNeeded(), internalList);
-                    if (workerConnection == null) { // no worker has enough memory for the job
-                        this.queuedJobRequests.remove(serverJobRequest.jobId()); // job won't be scheduled, no need to keep track of it anymore
-                        return false;
-                    }
+                    return true; // job hasn't been overtaken enough times yet, so it will be rescheduled later
                 }
             }
 
@@ -98,13 +96,6 @@ public class OvertakingJobSchedulerImpl implements JobScheduler {
                 .filter(worker -> worker.getMaxMemoryCapacity() >= memoryNeeded)
                 .max(Comparator.comparingInt(WorkerConnection::getEstimatedFreeMemory))
                 .orElse(null);
-    }
-
-    private int getWorkerMaxCapacity(List<WorkerConnection> workerConnections) {
-        return workerConnections.stream()
-                .mapToInt(WorkerConnection::getMaxMemoryCapacity)
-                .max()
-                .orElse(0);
     }
 
     static class QueuedJobRequest {
