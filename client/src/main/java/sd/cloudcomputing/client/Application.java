@@ -98,6 +98,7 @@ public class Application {
     }
 
     private void runCli() {
+        console.info("Type 'help' to see all available commands.");
         while (this.running) {
             try {
                 String line = console.readInput("client> ");
