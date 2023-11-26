@@ -46,8 +46,7 @@ public class CommandManager {
 
         Command command = getCommand(commandName);
         if (command == null) {
-            logger.info("Unknown command: " + commandName);
-            getCommand("help").execute(logger, args);
+            logger.warn(commandName + " is not a valid command. Type 'help' to see all available commands.");
             return;
         }
 

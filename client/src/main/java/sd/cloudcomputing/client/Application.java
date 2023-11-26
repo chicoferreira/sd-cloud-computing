@@ -98,9 +98,9 @@ public class Application {
     }
 
     private void runCli() {
+        console.info("Type 'help' to see all available commands.");
         while (this.running) {
             try {
-                this.commandManager.getCommand("help").execute(console, new String[0]);
                 String line = console.readInput("client> ");
                 this.commandManager.handleCommand(console, line);
             } catch (EndOfFileException | UserInterruptException ignored) {
