@@ -47,6 +47,7 @@ public class CommandManager {
         Command command = getCommand(commandName);
         if (command == null) {
             logger.info("Unknown command: " + commandName);
+            getCommand("help").execute(logger, args);
             return;
         }
 
