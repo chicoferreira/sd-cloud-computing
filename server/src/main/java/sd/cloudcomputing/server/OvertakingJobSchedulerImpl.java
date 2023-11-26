@@ -6,6 +6,7 @@ import sd.cloudcomputing.common.concurrent.SynchronizedList;
 import sd.cloudcomputing.common.concurrent.SynchronizedMap;
 
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 public class OvertakingJobSchedulerImpl implements JobScheduler {
@@ -20,7 +21,7 @@ public class OvertakingJobSchedulerImpl implements JobScheduler {
     public OvertakingJobSchedulerImpl(ConnectedWorkerManager connectedWorkerManager, Server server) {
         this.connectedWorkerManager = connectedWorkerManager;
         this.server = server;
-        this.queuedJobRequests = new SynchronizedMap<>();
+        this.queuedJobRequests = new SynchronizedMap<>(new LinkedHashMap<>()); // IMPORTANT: LinkedHashMap to preserve insertion order
     }
 
     @Override
@@ -69,9 +70,9 @@ public class OvertakingJobSchedulerImpl implements JobScheduler {
         return true;
     }
 
-    public void notifyReschedule() { // executed when a worker finishes a job or disconnects
-        for (QueuedJobRequest queuedJobRequest : this.queuedJobRequests.values()) {
-            // reschedule all jobs so they can maybe be scheduled on a worker with more free memory
+    public void notifyReschedule() { // executed when a worker changes memory state (e.g., disconnects or finishes a job)
+        for (QueuedJobRequest queuedJobRequest : this.queuedJobRequests.values()) { // queuedJobRequests is a LinkedHashMap, so this will iterate in insertion order
+            // reschedule all jobs, so they can maybe be scheduled on a worker with more free memory
             server.rescheduleJob(queuedJobRequest.getJobRequest());
         }
     }
