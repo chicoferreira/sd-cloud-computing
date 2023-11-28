@@ -39,7 +39,7 @@ public class Server {
         this.clientConnectionManager = new ClientConnectionManager();
         this.clientManager = new ClientManager();
         this.connectedWorkerManager = new ConnectedWorkerManager();
-        this.jobScheduler = new OvertakingJobSchedulerImpl(this.connectedWorkerManager, this);
+        this.jobScheduler = new OvertakingJobSchedulerImpl(this.connectedWorkerManager, this.logger);
         this.jobMappingService = new JobMappingService();
         this.clientPacketHandler = new ClientPacketHandler(this.logger, this.connectedWorkerManager, this);
     }
@@ -68,12 +68,9 @@ public class Server {
     }
 
     private void queueServerJobRequest(Client client, ClientConnection clientConnection, int clientJobId, JobRequest serverJobRequest) {
-        logger.info("Scheduling job request with id (client: " + clientJobId + " server: " + serverJobRequest.jobId() + ") " +
-                "and " + serverJobRequest.data().length + " bytes of data from " + client.getName());
-
         if (!jobScheduler.scheduleJob(serverJobRequest)) {
             this.jobMappingService.deleteMapping(serverJobRequest.jobId());
-            logger.warn("No memory for " + clientJobId + " from " + client.getName() + " with " + serverJobRequest.memoryNeeded() + " memory needed");
+            logger.warn("No memory for (server: " + serverJobRequest.jobId() + " client: " + clientJobId + ")" + " from " + client.getName() + " with " + serverJobRequest.memoryNeeded() + " memory needed");
             clientConnection.enqueuePacket(new GenericPacket(JobResult.PACKET_ID, JobResult.noMemory(clientJobId)));
         }
     }
@@ -112,7 +109,7 @@ public class Server {
 
         JobMappingService.Mapping mapping = this.jobMappingService.retrieveMappingFromServerJobId(serverJobId);
         if (mapping == null) {
-            this.logger.error("Race condition on job result with id " + serverJobId + ". No client or job result mapping found for this job id");
+            this.logger.warn("Race condition on job result with id " + serverJobId + ". No client or job result mapping found for this job id");
             return;
         }
 

@@ -64,7 +64,6 @@ public class WorkerConnection extends AbstractConnection<JobRequest, WorkerJobRe
 
     @Override
     protected JobRequest mapPacketBeforeSend(JobRequest packet) {
-        super.getLogger().info("Sending job request with id " + packet.jobId() + " and " + packet.data().length + " bytes of data");
         return super.mapPacketBeforeSend(packet);
     }
 

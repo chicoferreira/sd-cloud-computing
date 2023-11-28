@@ -17,7 +17,7 @@ public abstract class AbstractLogger implements Logger {
 
     @Override
     public final void warn(String message) {
-        print(loggerFormat.format("WARN", message, null));
+        printError(loggerFormat.format("WARN", message, null));
     }
 
     @Override

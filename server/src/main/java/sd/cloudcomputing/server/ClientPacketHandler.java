@@ -23,6 +23,7 @@ public class ClientPacketHandler {
         switch (packet.id()) {
             case JobRequest.PACKET_ID -> {
                 JobRequest jobRequest = (JobRequest) packet.content();
+                logger.info("Received job request with id " + jobRequest.jobId() + " and " + jobRequest.data().length + " bytes of data from " + client.getName());
                 server.queueClientJobRequest(client, connection, jobRequest);
             }
             case CSServerStatusRequestPacket.PACKET_ID -> {

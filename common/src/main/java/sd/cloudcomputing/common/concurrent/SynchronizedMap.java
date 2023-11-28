@@ -109,4 +109,18 @@ public class SynchronizedMap<T, V> {
             lock.unlock();
         }
     }
+
+    // Unsafe methods
+
+    public void internalLock() {
+        lock.lock();
+    }
+
+    public void internalUnlock() {
+        lock.unlock();
+    }
+
+    public Map<T, V> getInternalDelegate() {
+        return delegate;
+    }
 }

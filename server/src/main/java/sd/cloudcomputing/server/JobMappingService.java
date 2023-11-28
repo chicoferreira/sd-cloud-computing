@@ -21,7 +21,7 @@ public class JobMappingService {
     private final SynchronizedInteger nextServerJobId = new SynchronizedInteger(0);
 
     public JobRequest mapClientRequestToServerRequest(Client client, @NotNull JobRequest clientJobRequest) {
-        int serverJobId = nextServerJobId.incrementAndGet();
+        int serverJobId = nextServerJobId.getAndIncrement();
 
         serverJobIdToMapping.put(serverJobId, new Mapping(serverJobId, clientJobRequest.jobId(), client));
 
