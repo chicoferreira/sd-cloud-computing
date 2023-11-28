@@ -54,7 +54,9 @@ public class WorkerScheduler {
     public void stop() {
         this.running = false;
         for (Thread thread : threads) {
-            thread.interrupt();
+            if (thread != null) {
+                thread.interrupt();
+            }
         }
     }
 

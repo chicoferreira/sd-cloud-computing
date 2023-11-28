@@ -58,7 +58,7 @@ public class Worker {
 
             stop();
         } catch (IOException e) {
-            logger.error("Failed to create server: ", e);
+            logger.error("Failed to create server: " + e.getMessage());
         }
     }
 

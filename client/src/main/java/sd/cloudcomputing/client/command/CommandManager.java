@@ -20,6 +20,7 @@ public class CommandManager {
         register(new StatusCommand(application));
         register(new DisconnectCommand(application));
         register(new ExitCommand(application));
+        register(new BenchmarkCommand(application));
     }
 
     private void register(Command command) {
