@@ -3,6 +3,7 @@ package sd.cloudcomputing.server;
 import sd.cloudcomputing.common.AbstractConnection;
 import sd.cloudcomputing.common.JobRequest;
 import sd.cloudcomputing.common.JobResult;
+import sd.cloudcomputing.common.WorkerJobResult;
 import sd.cloudcomputing.common.concurrent.SynchronizedMap;
 import sd.cloudcomputing.common.logging.Logger;
 import sd.cloudcomputing.common.protocol.WSHandshakePacket;
@@ -13,7 +14,7 @@ import sd.cloudcomputing.common.serialization.SerializeInput;
 import java.io.IOException;
 import java.net.Socket;
 
-public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> {
+public class WorkerConnection extends AbstractConnection<JobRequest, WorkerJobResult> {
 
     private final Server server;
     private final SynchronizedMap<Integer, JobRequest> pendingJobRequests;
@@ -21,7 +22,7 @@ public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> 
     private int maxMemoryCapacity;
 
     public WorkerConnection(Logger logger, Frost frost, Socket socket, Server server, ConnectedWorkerManager connectedWorkerManager) {
-        super(JobRequest.class, JobResult.class, logger, frost, socket);
+        super(JobRequest.class, WorkerJobResult.class, logger, frost, socket);
         this.server = server;
         this.connectedWorkerManager = connectedWorkerManager;
         this.pendingJobRequests = new SynchronizedMap<>();
@@ -40,7 +41,8 @@ public class WorkerConnection extends AbstractConnection<JobRequest, JobResult> 
     }
 
     @Override
-    public void handlePacket(JobResult jobResult) {
+    public void handlePacket(WorkerJobResult workerJobResult) {
+        JobResult jobResult = workerJobResult.toJobResult();
         super.getLogger().info("Received job result " + jobResult.jobId() + " with " + jobResult.resultType());
 
         JobRequest jobRequest = pendingJobRequests.remove(jobResult.jobId());

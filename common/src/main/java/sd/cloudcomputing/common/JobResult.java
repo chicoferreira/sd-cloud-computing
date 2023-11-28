@@ -8,7 +8,7 @@ import sd.cloudcomputing.common.serialization.SerializeOutput;
 
 import java.io.IOException;
 
-public sealed interface JobResult permits JobResult.Success, JobResult.Failure {
+public sealed interface JobResult permits JobResult.Failure, JobResult.NoMemory, JobResult.Success {
 
     int PACKET_ID = 2;
 
@@ -20,10 +20,15 @@ public sealed interface JobResult permits JobResult.Success, JobResult.Failure {
         return new Failure(jobId, errorCode, errorMessage);
     }
 
+    static JobResult noMemory(int jobId) {
+        return new NoMemory(jobId);
+    }
+
     default ResultType resultType() {
         return switch (this) {
             case Success ignored -> ResultType.SUCCESS;
             case Failure ignored -> ResultType.FAILURE;
+            case NoMemory ignored -> ResultType.NO_MEMORY;
         };
     }
 
@@ -33,12 +38,26 @@ public sealed interface JobResult permits JobResult.Success, JobResult.Failure {
         return switch (this) {
             case Success success -> JobResult.success(newId, success.data());
             case Failure failure -> JobResult.failure(newId, failure.errorCode(), failure.errorMessage());
+            case NoMemory noMemory -> JobResult.noMemory(newId);
         };
     }
 
     enum ResultType {
         SUCCESS,
-        FAILURE
+        FAILURE,
+        NO_MEMORY;
+
+        public static ResultType fromOrdinal(int ordinal) {
+            return switch (ordinal) {
+                case 0 -> SUCCESS;
+                case 1 -> FAILURE;
+                case 2 -> NO_MEMORY;
+                default -> throw new IllegalArgumentException("Unknown result type: " + ordinal);
+            };
+        }
+    }
+
+    record NoMemory(int jobId) implements JobResult {
     }
 
     record Success(int jobId, byte[] data) implements JobResult {
@@ -51,16 +70,17 @@ public sealed interface JobResult permits JobResult.Success, JobResult.Failure {
 
         @Override
         public @NotNull JobResult deserialize(SerializeInput input, Frost frost) throws IOException {
-            if (frost.readBoolean(input)) {
-                return JobResult.success(frost.readInt(input), frost.readBytes(input));
-            } else {
-                return JobResult.failure(frost.readInt(input), frost.readInt(input), frost.readString(input));
-            }
+            ResultType resultType = ResultType.fromOrdinal(frost.readInt(input));
+            return switch (resultType) {
+                case SUCCESS -> JobResult.success(frost.readInt(input), frost.readBytes(input));
+                case FAILURE -> JobResult.failure(frost.readInt(input), frost.readInt(input), frost.readString(input));
+                case NO_MEMORY -> JobResult.noMemory(frost.readInt(input));
+            };
         }
 
         @Override
         public void serialize(JobResult result, SerializeOutput output, Frost frost) throws IOException {
-            frost.writeBoolean(result instanceof Success, output);
+            frost.writeInt(result.resultType().ordinal(), output);
             switch (result) {
                 case Failure failure -> {
                     frost.writeInt(failure.jobId(), output);
@@ -71,6 +91,7 @@ public sealed interface JobResult permits JobResult.Success, JobResult.Failure {
                     frost.writeInt(success.jobId(), output);
                     frost.writeBytes(success.data(), output);
                 }
+                case NoMemory noMemory -> frost.writeInt(noMemory.jobId(), output);
             }
         }
     }

@@ -34,11 +34,11 @@ public class Application {
 
     public Application(Frost frost) throws IOException {
         this.frost = frost;
-        this.commandManager = new CommandManager(this);
+        this.jobManager = new JobManager();
+        this.commandManager = new CommandManager(this, this.jobManager);
 
         this.console = createConsole();
         this.jobResultFileWorker = new JobResultFileWorker(this.console);
-        this.jobManager = new JobManager();
     }
 
     public void run() {
@@ -142,11 +142,11 @@ public class Application {
     }
 
     public void notifyJobResult(JobResult jobResult) {
+        ClientJob.Received clientJob = this.jobManager.registerJobResult(jobResult.jobId(), jobResult);
         switch (jobResult) {
             case JobResult.Success success -> {
                 console.info("Job " + success.jobId() + " completed successfully with " + success.data().length + " bytes.");
 
-                ClientJob.Finished clientJob = this.jobManager.registerJobResult(success.jobId(), success);
                 String outputFile = clientJob == null ? getDefaultFileName(jobResult.jobId()) : clientJob.jobOutputFile();
                 try {
                     this.jobResultFileWorker.queueWrite(success, outputFile);
@@ -156,6 +156,8 @@ public class Application {
             }
             case JobResult.Failure failure ->
                     console.error("Job " + failure.jobId() + " failed with error code " + failure.errorCode() + ": " + failure.errorMessage());
+            case JobResult.NoMemory noMemory ->
+                    console.info("Job " + noMemory.jobId() + " failed due to not enough memory");
         }
     }
 

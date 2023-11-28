@@ -2,6 +2,7 @@ package sd.cloudcomputing.worker;
 
 import sd.cloudcomputing.common.JobRequest;
 import sd.cloudcomputing.common.JobResult;
+import sd.cloudcomputing.common.WorkerJobResult;
 import sd.cloudcomputing.common.protocol.WSHandshakePacket;
 import sd.cloudcomputing.common.serialization.Frost;
 
@@ -25,6 +26,7 @@ public class Main {
         frost.registerSerializer(JobRequest.class, new JobRequest.Serialization());
         frost.registerSerializer(JobResult.class, new JobResult.Serialization());
         frost.registerSerializer(WSHandshakePacket.class, new WSHandshakePacket.Serialization());
+        frost.registerSerializer(WorkerJobResult.class, new WorkerJobResult.Serialization());
 
         Worker worker = new Worker(frost, maxMemoryCapacity, maxConcurrentJobs);
         worker.run(host, port);

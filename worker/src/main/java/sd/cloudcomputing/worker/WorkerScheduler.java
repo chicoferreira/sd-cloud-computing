@@ -1,7 +1,7 @@
 package sd.cloudcomputing.worker;
 
 import sd.cloudcomputing.common.JobRequest;
-import sd.cloudcomputing.common.JobResult;
+import sd.cloudcomputing.common.WorkerJobResult;
 import sd.cloudcomputing.common.concurrent.BoundedBuffer;
 import sd.cloudcomputing.common.logging.Logger;
 
@@ -23,11 +23,11 @@ public class WorkerScheduler {
     private final BoundedBuffer<JobRequest> queuedJobs;
     private final Thread[] threads;
 
-    private final Consumer<JobResult> endJobCallback;
+    private final Consumer<WorkerJobResult> endJobCallback;
 
     private boolean running;
 
-    public WorkerScheduler(Logger logger, JobExecutor jobExecutor, int maxMemoryCapacity, int maxConcurrentJobs, Consumer<JobResult> endJobCallback) {
+    public WorkerScheduler(Logger logger, JobExecutor jobExecutor, int maxMemoryCapacity, int maxConcurrentJobs, Consumer<WorkerJobResult> endJobCallback) {
         this.logger = logger;
 
         this.maxMemoryCapacity = maxMemoryCapacity;
@@ -82,12 +82,12 @@ public class WorkerScheduler {
                             currentMemoryUsage += jobRequest.memoryNeeded();
                             lock.unlock();
 
-                            JobResult jobResult = jobExecutor.execute(jobRequest);
+                            WorkerJobResult jobResult = jobExecutor.execute(jobRequest);
 
                             switch (jobResult) {
-                                case JobResult.Success success ->
+                                case WorkerJobResult.Success success ->
                                         this.logger.info("Job " + success.jobId() + " succeeded with result: " + success.data().length + " bytes");
-                                case JobResult.Failure failure ->
+                                case WorkerJobResult.Failure failure ->
                                         this.logger.info("Job " + failure.jobId() + " failed with error code " + failure.errorCode() + ": " + failure.errorMessage());
                             }
 

@@ -24,13 +24,13 @@ public class JobManager {
         return jobs.get(jobId);
     }
 
-    public @Nullable ClientJob.Finished registerJobResult(int jobId, JobResult jobResult) {
+    public @Nullable ClientJob.Received registerJobResult(int jobId, JobResult jobResult) {
         ClientJob clientJob = jobs.remove(jobId);
 
         if (clientJob instanceof ClientJob.Scheduled scheduled) { // this already null checks
-            ClientJob.Finished finished = scheduled.toFinished(jobResult);
-            jobs.put(jobId, finished);
-            return finished;
+            ClientJob.Received received = scheduled.toFinished(jobResult);
+            jobs.put(jobId, received);
+            return received;
         }
         return null;
     }

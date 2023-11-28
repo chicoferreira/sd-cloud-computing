@@ -2,6 +2,7 @@ package sd.cloudcomputing.server;
 
 import sd.cloudcomputing.common.JobRequest;
 import sd.cloudcomputing.common.JobResult;
+import sd.cloudcomputing.common.WorkerJobResult;
 import sd.cloudcomputing.common.protocol.*;
 import sd.cloudcomputing.common.serialization.Frost;
 
@@ -16,13 +17,12 @@ public class Main {
         frost.registerSerializer(JobResult.class, new JobResult.Serialization());
         frost.registerSerializer(CSServerStatusRequestPacket.class, new CSServerStatusRequestPacket.Serialization());
         frost.registerSerializer(SCServerStatusResponsePacket.class, new SCServerStatusResponsePacket.Serialization());
-        frost.registerSerializer(SCJobNotEnoughMemoryPacket.class, new SCJobNotEnoughMemoryPacket.Serialization());
+        frost.registerSerializer(WorkerJobResult.class, new WorkerJobResult.Serialization());
 
         GenericPacketSerializer serializer = new GenericPacketSerializer();
         serializer.registerPacketId(JobRequest.PACKET_ID, JobRequest.class);
         serializer.registerPacketId(JobResult.PACKET_ID, JobResult.class);
         serializer.registerPacketId(CSServerStatusRequestPacket.PACKET_ID, CSServerStatusRequestPacket.class);
-        serializer.registerPacketId(SCJobNotEnoughMemoryPacket.PACKET_ID, SCJobNotEnoughMemoryPacket.class);
         serializer.registerPacketId(SCServerStatusResponsePacket.PACKET_ID, SCServerStatusResponsePacket.class);
 
         frost.registerSerializer(GenericPacket.class, serializer);

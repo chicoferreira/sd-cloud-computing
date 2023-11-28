@@ -5,7 +5,7 @@ import sd.cloudcomputing.common.JobResult;
 /**
  * Used to store client information about a job
  */
-public sealed interface ClientJob permits ClientJob.Scheduled, ClientJob.Finished {
+public sealed interface ClientJob permits ClientJob.Received, ClientJob.Scheduled {
     int jobId();
 
     String jobOutputFile();
@@ -15,12 +15,12 @@ public sealed interface ClientJob permits ClientJob.Scheduled, ClientJob.Finishe
     long timestampCreated();
 
     record Scheduled(int jobId, String jobOutputFile, int memory, long timestampCreated) implements ClientJob {
-        public Finished toFinished(JobResult jobResult) {
-            return new Finished(jobId, jobOutputFile, memory, timestampCreated, jobResult);
+        public Received toFinished(JobResult jobResult) {
+            return new Received(jobId, jobOutputFile, memory, timestampCreated, jobResult);
         }
     }
 
-    record Finished(int jobId, String jobOutputFile, int memory, long timestampCreated,
+    record Received(int jobId, String jobOutputFile, int memory, long timestampCreated,
                     JobResult jobResult) implements ClientJob {
     }
 }

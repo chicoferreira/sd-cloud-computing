@@ -61,10 +61,6 @@ public class ServerConnection extends AbstractConnection<GenericPacket, GenericP
     @Override
     public void handlePacket(GenericPacket packet) {
         switch (packet.id()) {
-            case SCJobNotEnoughMemoryPacket.PACKET_ID:
-                SCJobNotEnoughMemoryPacket notEnoughMemoryPacket = (SCJobNotEnoughMemoryPacket) packet.content();
-                getLogger().info("Job " + notEnoughMemoryPacket.jobId() + " failed due to not enough memory");
-                break;
             case SCServerStatusResponsePacket.PACKET_ID:
                 SCServerStatusResponsePacket responsePacket = (SCServerStatusResponsePacket) packet.content();
                 getLogger().info("Server status (" + this.getSocket().getAddressWithPort() + "): ");

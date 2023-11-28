@@ -1,6 +1,6 @@
 package sd.cloudcomputing.worker;
 
-import sd.cloudcomputing.common.JobResult;
+import sd.cloudcomputing.common.WorkerJobResult;
 import sd.cloudcomputing.common.logging.AbstractLogger;
 import sd.cloudcomputing.common.logging.impl.StdoutLogger;
 import sd.cloudcomputing.common.logging.impl.ThreadPrefixedLoggerFormat;
@@ -62,7 +62,7 @@ public class Worker {
         }
     }
 
-    private void handlePacket(JobResult packet) {
+    private void handlePacket(WorkerJobResult packet) {
         this.serverConnection.enqueuePacket(packet);
     }
 

@@ -2,7 +2,7 @@ package sd.cloudcomputing.worker;
 
 import sd.cloudcomputing.common.AbstractConnection;
 import sd.cloudcomputing.common.JobRequest;
-import sd.cloudcomputing.common.JobResult;
+import sd.cloudcomputing.common.WorkerJobResult;
 import sd.cloudcomputing.common.logging.Logger;
 import sd.cloudcomputing.common.protocol.WSHandshakePacket;
 import sd.cloudcomputing.common.serialization.Frost;
@@ -12,13 +12,13 @@ import sd.cloudcomputing.common.serialization.SerializeOutput;
 import java.io.IOException;
 import java.net.Socket;
 
-public class ServerConnection extends AbstractConnection<JobResult, JobRequest> {
+public class ServerConnection extends AbstractConnection<WorkerJobResult, JobRequest> {
 
     private final WorkerScheduler workerScheduler;
     private final Worker worker;
 
     public ServerConnection(Logger logger, Frost frost, Socket socket, WorkerScheduler workerScheduler, Worker worker) {
-        super(JobResult.class, JobRequest.class, logger, frost, socket);
+        super(WorkerJobResult.class, JobRequest.class, logger, frost, socket);
         this.workerScheduler = workerScheduler;
         this.worker = worker;
     }

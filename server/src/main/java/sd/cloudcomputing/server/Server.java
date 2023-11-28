@@ -7,7 +7,6 @@ import sd.cloudcomputing.common.logging.Logger;
 import sd.cloudcomputing.common.logging.impl.StdoutLogger;
 import sd.cloudcomputing.common.logging.impl.ThreadPrefixedLoggerFormat;
 import sd.cloudcomputing.common.protocol.GenericPacket;
-import sd.cloudcomputing.common.protocol.SCJobNotEnoughMemoryPacket;
 import sd.cloudcomputing.common.serialization.Frost;
 
 import java.io.IOException;
@@ -74,10 +73,8 @@ public class Server {
 
         if (!jobScheduler.scheduleJob(serverJobRequest)) {
             this.jobMappingService.deleteMapping(serverJobRequest.jobId());
-
             logger.warn("No memory for " + clientJobId + " from " + client.getName() + " with " + serverJobRequest.memoryNeeded() + " memory needed");
-            SCJobNotEnoughMemoryPacket notEnoughMemoryPacket = new SCJobNotEnoughMemoryPacket(clientJobId);
-            clientConnection.enqueuePacket(new GenericPacket(SCJobNotEnoughMemoryPacket.PACKET_ID, notEnoughMemoryPacket));
+            clientConnection.enqueuePacket(new GenericPacket(JobResult.PACKET_ID, JobResult.noMemory(clientJobId)));
         }
     }
 
