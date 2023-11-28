@@ -28,7 +28,7 @@ public class JobManager {
         ClientJob clientJob = jobs.remove(jobId);
 
         if (clientJob instanceof ClientJob.Scheduled scheduled) { // this already null checks
-            ClientJob.Received received = scheduled.toFinished(jobResult);
+            ClientJob.Received received = scheduled.toFinished(jobResult, System.nanoTime());
             jobs.put(jobId, received);
             return received;
         }

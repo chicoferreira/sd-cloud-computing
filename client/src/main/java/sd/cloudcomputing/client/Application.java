@@ -132,7 +132,7 @@ public class Application {
             outputFileName = getDefaultFileName(jobId);
         }
 
-        ClientJob clientJob = new ClientJob.Scheduled(jobId, outputFileName, neededMemory, System.currentTimeMillis());
+        ClientJob clientJob = new ClientJob.Scheduled(jobId, outputFileName, neededMemory, System.nanoTime());
         this.jobManager.addJob(clientJob);
         return jobId;
     }

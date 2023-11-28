@@ -12,15 +12,15 @@ public sealed interface ClientJob permits ClientJob.Received, ClientJob.Schedule
 
     int memory();
 
-    long timestampCreated();
+    long nanoTimeCreated();
 
-    record Scheduled(int jobId, String jobOutputFile, int memory, long timestampCreated) implements ClientJob {
-        public Received toFinished(JobResult jobResult) {
-            return new Received(jobId, jobOutputFile, memory, timestampCreated, jobResult);
+    record Scheduled(int jobId, String jobOutputFile, int memory, long nanoTimeCreated) implements ClientJob {
+        public Received toFinished(JobResult jobResult, long nanoTimeReceived) {
+            return new Received(jobId, jobOutputFile, memory, nanoTimeCreated, nanoTimeReceived, jobResult);
         }
     }
 
-    record Received(int jobId, String jobOutputFile, int memory, long timestampCreated,
+    record Received(int jobId, String jobOutputFile, int memory, long nanoTimeCreated, long nanoTimeReceived,
                     JobResult jobResult) implements ClientJob {
     }
 }
