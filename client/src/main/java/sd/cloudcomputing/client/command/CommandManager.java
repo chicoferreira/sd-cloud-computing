@@ -1,6 +1,7 @@
 package sd.cloudcomputing.client.command;
 
 import sd.cloudcomputing.client.Application;
+import sd.cloudcomputing.client.job.JobManager;
 import sd.cloudcomputing.common.logging.Logger;
 
 import java.util.Collection;
@@ -11,7 +12,7 @@ public class CommandManager {
 
     private final Map<String, Command> commands;
 
-    public CommandManager(Application application) {
+    public CommandManager(Application application, JobManager jobManager) {
         this.commands = new HashMap<>();
 
         register(new ConnectCommand(application));
@@ -21,6 +22,7 @@ public class CommandManager {
         register(new DisconnectCommand(application));
         register(new ExitCommand(application));
         register(new BenchmarkCommand(application));
+        register(new JobsCommand(jobManager));
     }
 
     private void register(Command command) {
@@ -36,7 +38,7 @@ public class CommandManager {
     }
 
     public void handleCommand(Logger logger, String rawCommand) {
-        String[] split = rawCommand.split(" ");
+        String[] split = rawCommand.trim().replaceAll(" +", " ").split(" ");
         if (split.length == 0) {
             return;
         }
