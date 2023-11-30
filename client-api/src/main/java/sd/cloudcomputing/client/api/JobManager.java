@@ -1,4 +1,4 @@
-package sd.cloudcomputing.client.job;
+package sd.cloudcomputing.client.api;
 
 import org.jetbrains.annotations.Nullable;
 import sd.cloudcomputing.common.JobResult;
@@ -12,16 +12,6 @@ public class JobManager {
 
     public void addJob(ClientJob clientJob) {
         jobs.put(clientJob.jobId(), clientJob);
-    }
-
-    /**
-     * @param jobId The job ID
-     * @return The job associated with the given ID or null if no job with the given ID
-     * <p>
-     * The returned job (if exists) can be either scheduled or finished
-     */
-    public ClientJob getJob(int jobId) {
-        return jobs.get(jobId);
     }
 
     public @Nullable ClientJob.Received registerJobResult(int jobId, JobResult jobResult) {

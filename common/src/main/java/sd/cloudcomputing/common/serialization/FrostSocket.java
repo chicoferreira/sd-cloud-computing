@@ -34,6 +34,15 @@ public class FrostSocket {
         return serializeOutput;
     }
 
+    public <T> @NotNull T read(Frost frost, Class<T> readPacketClass) throws SerializationException, IOException {
+        return frost.readSerializable(readPacketClass, readEnd());
+    }
+
+    public <T> void writeFlush(Frost frost, @NotNull T packet, Class<T> packetClass) throws SerializationException, IOException {
+        frost.writeSerializable(packet, packetClass, writeEnd());
+        frost.flush(writeEnd());
+    }
+
     public void close() throws IOException {
         socket.close();
     }

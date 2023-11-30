@@ -7,38 +7,36 @@ import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
+import sd.cloudcomputing.client.api.*;
 import sd.cloudcomputing.client.command.CommandManager;
-import sd.cloudcomputing.client.job.ClientJob;
-import sd.cloudcomputing.client.job.JobManager;
-import sd.cloudcomputing.client.job.JobResultFileWorker;
-import sd.cloudcomputing.common.JobResult;
 import sd.cloudcomputing.common.logging.Console;
 import sd.cloudcomputing.common.logging.impl.DefaultLoggerFormat;
 import sd.cloudcomputing.common.logging.impl.JLineConsole;
-import sd.cloudcomputing.common.serialization.Frost;
+import sd.cloudcomputing.common.serialization.SerializationException;
+import sd.cloudcomputing.common.util.AuthenticateResult;
 
 import java.io.IOException;
-import java.net.Socket;
-import java.util.function.Supplier;
+import java.util.List;
 
 public class Application {
 
+    private final Client client;
     private final CommandManager commandManager;
-    private final Frost frost;
     private final Console console;
     private final JobResultFileWorker jobResultFileWorker;
-    private final JobManager jobManager;
+    private final ServerSessionListener listener;
 
     private boolean running;
-    private ServerConnection currentConnection;
+    private ServerSession currentSession;
 
-    public Application(Frost frost) throws IOException {
-        this.frost = frost;
-        this.jobManager = new JobManager();
-        this.commandManager = new CommandManager(this, this.jobManager);
-
+    public Application() throws IOException {
+        this.client = Client.createNewClient();
+        this.commandManager = new CommandManager(this);
         this.console = createConsole();
+
         this.jobResultFileWorker = new JobResultFileWorker(this.console);
+
+        this.listener = new ServerSessionListenerImpl(this, this.console, this.jobResultFileWorker);
     }
 
     public void run() {
@@ -53,8 +51,8 @@ public class Application {
     private void stop() {
         this.running = false;
 
-        if (this.currentConnection != null) {
-            this.currentConnection.disconnect();
+        if (this.currentSession != null) {
+            this.currentSession.disconnect();
         }
 
         this.jobResultFileWorker.stop();
@@ -73,28 +71,41 @@ public class Application {
         }
 
         try {
-            Socket socket = new Socket(ip, port);
-            ServerConnection serverConnection = new ServerConnection(console, frost, this, socket);
+            ServerNoAuthSession noAuthSession = this.client.connect(ip, port);
+            console.info("Connected to server at " + noAuthSession.getAddressWithPort());
 
-            console.info("Connected to server at " + serverConnection.getSocket().getAddressWithPort());
+            String username = console.readInput("Insert your username: ");
+            String password = console.readPassword("Insert your password: ");
 
-            Supplier<String> username = () -> console.readInput("Insert your username: ");
-            Supplier<String> password = () -> console.readPassword("Insert your password: ");
-
-            if (serverConnection.start(username, password)) {
-                this.currentConnection = serverConnection;
+            AuthenticateResult authenticateResult = noAuthSession.login(username, password);
+            if (!authenticateResult.isSuccess()) {
+                this.console.info("Failed to authenticate: " + authenticateResult);
+                noAuthSession.disconnect();
+                return;
             }
+
+            ServerSession serverConnection = noAuthSession.createLoggedSession(console, this.client, this.listener);
+            this.console.info("Successfully authenticated as " + username + " (" + authenticateResult + ")");
+            serverConnection.startReadWrite();
+
+            this.currentSession = serverConnection;
         } catch (IOException e) {
             console.error("Failed to connect to server: " + e.getMessage());
+        } catch (SerializationException e) {
+            console.error("Failed to serialize packet: " + e.getMessage());
         }
     }
 
-    public @Nullable ServerConnection getCurrentServerConnection() {
-        return currentConnection == null || !currentConnection.isConnected() ? null : currentConnection;
+    public List<ClientJob> getAllJobs() {
+        return this.client.getAllJobs();
+    }
+
+    private @Nullable ServerSession getCurrentServerSession() {
+        return currentSession == null || !currentSession.isConnected() ? null : currentSession;
     }
 
     public boolean isConnected() {
-        return getCurrentServerConnection() != null;
+        return getCurrentServerSession() != null;
     }
 
     private void runCli() {
@@ -117,51 +128,42 @@ public class Application {
         return new JLineConsole(new DefaultLoggerFormat(), reader);
     }
 
-    public void notifyServerDisconnect() {
-        this.currentConnection = null;
-    }
-
-    public int createAndScheduleJobRequest(byte[] bytes, int neededMemory, @Nullable String outputFileName) {
-        if (!this.isConnected()) {
-            return -1;
-        }
-
-        int jobId = this.currentConnection.scheduleJob(bytes, neededMemory);
-
-        if (outputFileName == null) {
-            outputFileName = getDefaultFileName(jobId);
-        }
-
-        ClientJob clientJob = new ClientJob.Scheduled(jobId, outputFileName, neededMemory, System.nanoTime());
-        this.jobManager.addJob(clientJob);
-        return jobId;
-    }
-
-    private String getDefaultFileName(int jobId) {
-        return "job-" + jobId + ".7z"; // The JobFunction will create bytes of a .7z file on success
-    }
-
-    public void notifyJobResult(JobResult jobResult) {
-        ClientJob.Received clientJob = this.jobManager.registerJobResult(jobResult.jobId(), jobResult);
-        switch (jobResult) {
-            case JobResult.Success success -> {
-                console.info("Job " + success.jobId() + " completed successfully with " + success.data().length + " bytes.");
-
-                String outputFile = clientJob == null ? getDefaultFileName(jobResult.jobId()) : clientJob.jobOutputFile();
-                try {
-                    this.jobResultFileWorker.queueWrite(success, outputFile);
-                } catch (InterruptedException e) {
-                    console.error("Failed to queue job result for job " + success.jobId() + ": " + e.getMessage());
-                }
-            }
-            case JobResult.Failure failure ->
-                    console.error("Job " + failure.jobId() + " failed with error code " + failure.errorCode() + ": " + failure.errorMessage());
-            case JobResult.NoMemory noMemory ->
-                    console.info("Job " + noMemory.jobId() + " failed due to not enough memory");
-        }
+    void notifyServerDisconnect() {
+        console.info("Disconnected from server");
+        this.currentSession = null;
     }
 
     public void exit() {
         this.running = false;
+    }
+
+    public int createAndScheduleJobRequest(byte[] bytes, int memoryAsInt, String outputFile) {
+        ServerSession currentServerSession = getCurrentServerSession();
+        if (currentServerSession == null) {
+            return -1;
+        }
+
+        return this.client.createAndScheduleJobRequest(currentServerSession, bytes, memoryAsInt, outputFile);
+    }
+
+    public boolean sendServerStatusRequest() {
+        ServerSession currentServerSession = getCurrentServerSession();
+        if (currentServerSession != null) {
+            try {
+                currentServerSession.sendServerStatusRequest();
+                return true;
+            } catch (IOException | SerializationException e) {
+                console.error("Failed to send server status request: " + e.getMessage());
+            }
+        }
+
+        return false;
+    }
+
+    public void disconnect() {
+        ServerSession currentServerSession = this.getCurrentServerSession();
+        if (currentServerSession != null) {
+            currentServerSession.disconnect();
+        }
     }
 }

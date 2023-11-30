@@ -28,6 +28,7 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     implementation(project(":common"))
+    implementation(project(":client-api"))
     implementation("org.jline:jline-reader:3.24.0")
     implementation("org.jline:jline-terminal:3.24.0")
     implementation("org.jline:jline-terminal-jansi:3.24.0")

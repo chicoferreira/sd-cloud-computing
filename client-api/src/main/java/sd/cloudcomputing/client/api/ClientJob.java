@@ -1,4 +1,4 @@
-package sd.cloudcomputing.client.job;
+package sd.cloudcomputing.client.api;
 
 import sd.cloudcomputing.common.JobResult;
 

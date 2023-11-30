@@ -1,4 +1,4 @@
-package sd.cloudcomputing.client.job;
+package sd.cloudcomputing.client.api;
 
 import sd.cloudcomputing.common.JobResult;
 import sd.cloudcomputing.common.concurrent.BoundedBuffer;
@@ -20,15 +20,19 @@ public class JobResultFileWorker {
 
     private final Logger logger;
 
-    public void queueWrite(JobResult.Success success, String fileName) throws InterruptedException {
-        this.queue.put(new JobResultFile(fileName, success));
-    }
     private Thread thread;
     private boolean running;
 
     public JobResultFileWorker(Logger logger) {
         this.logger = logger;
         this.queue = new BoundedBuffer<>(100);
+    }
+
+    public void queueWrite(JobResult.Success success, String fileName) throws InterruptedException {
+        this.queue.put(new JobResultFile(fileName, success));
+    }
+
+    private record JobResultFile(String fileName, JobResult.Success jobResult) {
     }
 
     public void run() {
@@ -48,15 +52,11 @@ public class JobResultFileWorker {
     private void save(JobResult.Success success, String fileName) {
         Path path = resultFolder.resolve(fileName);
         try {
-            this.logger.info("Saving job result for job " + success.jobId() + " to file '" + fileName + "'...");
             Files.createDirectories(resultFolder);
             Files.write(path, success.data(), StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         } catch (IOException e) {
             this.logger.error("Could not save job result for job " + success.jobId() + " to file '" + fileName + "': " + e.getMessage());
         }
-    }
-
-    private record JobResultFile(String fileName, JobResult.Success jobResult) {
     }
 
     public void stop() {

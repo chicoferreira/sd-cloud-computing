@@ -1,7 +1,7 @@
 package sd.cloudcomputing.client.command;
 
-import sd.cloudcomputing.client.job.ClientJob;
-import sd.cloudcomputing.client.job.JobManager;
+import sd.cloudcomputing.client.Application;
+import sd.cloudcomputing.client.api.ClientJob;
 import sd.cloudcomputing.common.logging.Logger;
 
 import java.util.ArrayList;
@@ -10,18 +10,18 @@ import java.util.List;
 
 public class JobsCommand extends AbstractCommand {
 
-    private final JobManager jobManager;
+    private final Application application;
 
     private static final int MAX_JOBS_SHOWN = 7;
 
-    public JobsCommand(JobManager jobManager) {
+    public JobsCommand(Application application) {
         super("jobs", "");
-        this.jobManager = jobManager;
+        this.application = application;
     }
 
     @Override
     public void execute(Logger logger, String[] args) {
-        List<ClientJob> allJobs = jobManager.getAllJobs();
+        List<ClientJob> allJobs = application.getAllJobs();
 
         List<ClientJob.Scheduled> scheduledJobs = new ArrayList<>();
         List<ClientJob.Received> receivedJobs = new ArrayList<>();

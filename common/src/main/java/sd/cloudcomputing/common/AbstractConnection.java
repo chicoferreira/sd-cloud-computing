@@ -22,12 +22,16 @@ public abstract class AbstractConnection<W, R> implements AutoCloseable {
     private Thread readThread;
 
     public AbstractConnection(Class<W> writePacketClass, Class<R> readPacketClass, Logger logger, Frost frost, Socket socket) {
+        this(writePacketClass, readPacketClass, logger, frost, new FrostSocket(socket));
+    }
+
+    public AbstractConnection(Class<W> writePacketClass, Class<R> readPacketClass, Logger logger, Frost frost, FrostSocket socket) {
         this.writePacketClass = writePacketClass;
         this.readPacketClass = readPacketClass;
         this.logger = logger;
         this.frost = frost;
         this.writeQueue = new BoundedBuffer<>(100);
-        this.socket = new FrostSocket(socket);
+        this.socket = socket;
     }
 
     protected Frost getFrost() {
@@ -158,5 +162,9 @@ public abstract class AbstractConnection<W, R> implements AutoCloseable {
         } catch (InterruptedException e) {
             this.logger.warn("Error joining threads: " + e.getMessage());
         }
+    }
+
+    public String getAddressWithPort() {
+        return socket.getAddressWithPort();
     }
 }

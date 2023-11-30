@@ -2,7 +2,6 @@ package sd.cloudcomputing.client.command;
 
 import org.jetbrains.annotations.Nullable;
 import sd.cloudcomputing.client.Application;
-import sd.cloudcomputing.client.ServerConnection;
 import sd.cloudcomputing.common.logging.Logger;
 
 import java.io.IOException;
@@ -52,8 +51,7 @@ public class JobCommand extends AbstractCommand {
             return;
         }
 
-        ServerConnection currentServerConnection = application.getCurrentServerConnection();
-        if (currentServerConnection == null) {
+        if (!application.isConnected()) {
             logger.error("Not connected to server");
             return;
         }
