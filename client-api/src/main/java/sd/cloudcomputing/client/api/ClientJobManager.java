@@ -6,7 +6,7 @@ import sd.cloudcomputing.common.concurrent.SynchronizedMap;
 
 import java.util.List;
 
-public class JobManager {
+public class ClientJobManager {
 
     private final SynchronizedMap<Integer, ClientJob> jobs = new SynchronizedMap<>();
 

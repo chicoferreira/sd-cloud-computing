@@ -13,13 +13,13 @@ import java.util.List;
 
 public class Client {
 
-    private final JobManager jobManager;
+    private final ClientJobManager clientJobManager;
     private final Frost frost;
     private final SynchronizedInteger jobIdCounter = new SynchronizedInteger(0);
 
     private Client(Frost frost) {
         this.frost = frost;
-        this.jobManager = new JobManager();
+        this.clientJobManager = new ClientJobManager();
     }
 
     public static Client createNewClient() {
@@ -55,7 +55,7 @@ public class Client {
         }
 
         ClientJob clientJob = new ClientJob.Scheduled(jobId, outputFileName, neededMemory, System.nanoTime());
-        this.jobManager.addJob(clientJob);
+        this.clientJobManager.addJob(clientJob);
         return jobId;
     }
 
@@ -64,10 +64,10 @@ public class Client {
     }
 
     public List<ClientJob> getAllJobs() {
-        return this.jobManager.getAllJobs();
+        return this.clientJobManager.getAllJobs();
     }
 
-    public JobManager getJobManager() {
-        return jobManager;
+    public ClientJobManager getJobManager() {
+        return clientJobManager;
     }
 }

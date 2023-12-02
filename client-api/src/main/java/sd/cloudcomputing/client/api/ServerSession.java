@@ -16,12 +16,12 @@ import java.io.IOException;
 public class ServerSession extends AbstractConnection<GenericPacket, GenericPacket> {
 
     private final ServerSessionListener listener;
-    private final JobManager jobManager;
+    private final ClientJobManager clientJobManager;
 
-    public ServerSession(Logger logger, Frost frost, FrostSocket socket, ServerSessionListener listener, JobManager jobManager) {
+    public ServerSession(Logger logger, Frost frost, FrostSocket socket, ServerSessionListener listener, ClientJobManager clientJobManager) {
         super(GenericPacket.class, GenericPacket.class, logger, frost, socket);
         this.listener = listener;
-        this.jobManager = jobManager;
+        this.clientJobManager = clientJobManager;
     }
 
     public void startReadWrite() {
@@ -47,7 +47,7 @@ public class ServerSession extends AbstractConnection<GenericPacket, GenericPack
                 break;
             case JobResult.PACKET_ID:
                 JobResult jobResult = (JobResult) packet.content();
-                ClientJob.Received received = jobManager.registerJobResult(jobResult.jobId(), jobResult);
+                ClientJob.Received received = clientJobManager.registerJobResult(jobResult.jobId(), jobResult);
                 listener.onJobResultResponse(this, received);
                 break;
             default:
