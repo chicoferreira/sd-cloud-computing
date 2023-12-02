@@ -59,7 +59,7 @@ public class JobsCommand extends AbstractCommand {
                         job.jobId(),
                         job.jobOutputFile(),
                         job.memory(),
-                        secondsAgo(job.nanoTimeCreated()),
+                        secondsAgo(job.nanoTimeReceived()),
                         job.jobResult().resultType().name())));
         if (receivedJobs.size() > MAX_JOBS_SHOWN) {
             int missing = receivedJobs.size() - MAX_JOBS_SHOWN;

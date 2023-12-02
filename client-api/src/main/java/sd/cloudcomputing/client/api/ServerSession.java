@@ -35,7 +35,7 @@ public class ServerSession extends AbstractConnection<GenericPacket, GenericPack
 
     public void sendServerStatusRequest() throws IOException, SerializationException {
         GenericPacket packet = new GenericPacket(CSServerStatusRequestPacket.PACKET_ID, new CSServerStatusRequestPacket());
-        this.getSocket().writeFlush(super.getFrost(), packet, GenericPacket.class);
+        super.enqueuePacket(packet);
     }
 
     @Override
