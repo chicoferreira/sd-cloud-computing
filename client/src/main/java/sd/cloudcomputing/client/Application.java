@@ -149,12 +149,8 @@ public class Application {
     public boolean sendServerStatusRequest() {
         ServerSession currentServerSession = getCurrentServerSession();
         if (currentServerSession != null) {
-            try {
-                currentServerSession.sendServerStatusRequest();
-                return true;
-            } catch (IOException | SerializationException e) {
-                console.error("Failed to send server status request: " + e.getMessage());
-            }
+            currentServerSession.sendServerStatusRequest();
+            return true;
         }
 
         return false;

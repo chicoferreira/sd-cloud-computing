@@ -42,10 +42,6 @@ public abstract class AbstractConnection<W, R> implements AutoCloseable {
         return logger;
     }
 
-    public FrostSocket getSocket() {
-        return socket;
-    }
-
     public SerializeOutput writeEnd() throws IOException {
         return this.socket.writeEnd();
     }

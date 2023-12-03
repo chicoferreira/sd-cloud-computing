@@ -8,23 +8,7 @@ import sd.cloudcomputing.common.serialization.SerializeOutput;
 
 import java.io.IOException;
 
-public class CSAuthPacket {
-
-    private final String username;
-    private final String password;
-
-    public CSAuthPacket(String username, String password) {
-        this.username = username;
-        this.password = password;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
+public record CSAuthPacket(String username, String password) {
 
     public static class Serialization implements Serialize<CSAuthPacket> {
 
@@ -37,8 +21,8 @@ public class CSAuthPacket {
 
         @Override
         public void serialize(CSAuthPacket object, SerializeOutput output, Frost frost) throws IOException {
-            frost.writeString(object.getUsername(), output);
-            frost.writeString(object.getPassword(), output);
+            frost.writeString(object.username(), output);
+            frost.writeString(object.password(), output);
         }
     }
 

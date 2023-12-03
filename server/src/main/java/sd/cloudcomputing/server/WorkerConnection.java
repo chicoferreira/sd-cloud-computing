@@ -13,6 +13,7 @@ import sd.cloudcomputing.common.serialization.SerializeInput;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.Map;
 
 public class WorkerConnection extends AbstractConnection<JobRequest, WorkerJobResult> {
 
@@ -37,7 +38,13 @@ public class WorkerConnection extends AbstractConnection<JobRequest, WorkerJobRe
     }
 
     public Status getStatus() {
-        return new Status(this.pendingJobRequests.size(), this.maxMemoryCapacity, this.pendingJobRequests.sumValues(JobRequest::memoryNeeded));
+        this.pendingJobRequests.internalLock();
+        try {
+            Map<Integer, JobRequest> internalMap = this.pendingJobRequests.getInternalDelegate();
+            return new Status(internalMap.size(), this.maxMemoryCapacity, internalMap.values().stream().mapToInt(JobRequest::memoryNeeded).sum());
+        } finally {
+            this.pendingJobRequests.internalUnlock();
+        }
     }
 
     @Override

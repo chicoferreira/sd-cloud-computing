@@ -70,7 +70,7 @@ public class Server {
     private void queueServerJobRequest(Client client, ClientConnection clientConnection, int clientJobId, JobRequest serverJobRequest) {
         if (!jobScheduler.scheduleJob(serverJobRequest)) {
             this.jobMappingService.deleteMapping(serverJobRequest.jobId());
-            logger.warn("No memory for (server: " + serverJobRequest.jobId() + " client: " + clientJobId + ")" + " from " + client.getName() + " with " + serverJobRequest.memoryNeeded() + " memory needed");
+            logger.warn("No memory for (server: " + serverJobRequest.jobId() + " client: " + clientJobId + ")" + " from " + client.name() + " with " + serverJobRequest.memoryNeeded() + " memory needed");
             clientConnection.enqueuePacket(new GenericPacket(JobResult.PACKET_ID, JobResult.noMemory(clientJobId)));
         }
     }
@@ -95,7 +95,7 @@ public class Server {
         Client client = mapping.client();
         ClientConnection clientConnection = this.clientConnectionManager.getClientConnection(client);
         if (clientConnection == null) {
-            this.logger.warn("Client " + client.getName() + " disconnected, no need to reschedule " + serverJobRequest.jobId());
+            this.logger.warn("Client " + client.name() + " disconnected, no need to reschedule " + serverJobRequest.jobId());
             return;
         }
 
@@ -120,7 +120,7 @@ public class Server {
 
         ClientConnection clientConnection = this.clientConnectionManager.getClientConnection(client);
         if (clientConnection == null) { // requirements have not specified what should happen in this case, so we will just ignore the result
-            this.logger.warn("Client " + client.getName() + " disconnected before receiving job result " + clientJobId);
+            this.logger.warn("Client " + client.name() + " disconnected before receiving job result " + clientJobId);
             return;
         }
 

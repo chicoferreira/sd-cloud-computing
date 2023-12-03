@@ -9,9 +9,6 @@ import sd.cloudcomputing.common.protocol.GenericPacket;
 import sd.cloudcomputing.common.protocol.SCServerStatusResponsePacket;
 import sd.cloudcomputing.common.serialization.Frost;
 import sd.cloudcomputing.common.serialization.FrostSocket;
-import sd.cloudcomputing.common.serialization.SerializationException;
-
-import java.io.IOException;
 
 public class ServerSession extends AbstractConnection<GenericPacket, GenericPacket> {
 
@@ -33,7 +30,7 @@ public class ServerSession extends AbstractConnection<GenericPacket, GenericPack
         super.enqueuePacket(new GenericPacket(JobRequest.PACKET_ID, jobRequest));
     }
 
-    public void sendServerStatusRequest() throws IOException, SerializationException {
+    public void sendServerStatusRequest() {
         GenericPacket packet = new GenericPacket(CSServerStatusRequestPacket.PACKET_ID, new CSServerStatusRequestPacket());
         super.enqueuePacket(packet);
     }

@@ -1,7 +1,10 @@
 package sd.cloudcomputing.common.protocol;
 
 import org.jetbrains.annotations.NotNull;
-import sd.cloudcomputing.common.serialization.*;
+import sd.cloudcomputing.common.serialization.Frost;
+import sd.cloudcomputing.common.serialization.Serialize;
+import sd.cloudcomputing.common.serialization.SerializeInput;
+import sd.cloudcomputing.common.serialization.SerializeOutput;
 
 import java.io.IOException;
 
@@ -13,7 +16,7 @@ public record SCServerStatusResponsePacket(int connectedWorkers, int totalCapaci
     public static final class Serialization implements Serialize<SCServerStatusResponsePacket> {
 
         @Override
-        public @NotNull SCServerStatusResponsePacket deserialize(SerializeInput input, Frost frost) throws SerializationException, IOException {
+        public @NotNull SCServerStatusResponsePacket deserialize(SerializeInput input, Frost frost) throws IOException {
             return new SCServerStatusResponsePacket(
                     frost.readInt(input),
                     frost.readInt(input),
@@ -24,7 +27,7 @@ public record SCServerStatusResponsePacket(int connectedWorkers, int totalCapaci
         }
 
         @Override
-        public void serialize(SCServerStatusResponsePacket object, SerializeOutput output, Frost frost) throws SerializationException, IOException {
+        public void serialize(SCServerStatusResponsePacket object, SerializeOutput output, Frost frost) throws IOException {
             frost.writeInt(object.connectedWorkers(), output);
             frost.writeInt(object.totalCapacity(), output);
             frost.writeInt(object.maxPossibleMemory(), output);

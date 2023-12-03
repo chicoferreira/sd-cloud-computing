@@ -38,7 +38,7 @@ public sealed interface JobResult permits JobResult.Failure, JobResult.NoMemory,
         return switch (this) {
             case Success success -> JobResult.success(newId, success.data());
             case Failure failure -> JobResult.failure(newId, failure.errorCode(), failure.errorMessage());
-            case NoMemory noMemory -> JobResult.noMemory(newId);
+            case NoMemory ignored -> JobResult.noMemory(newId);
         };
     }
 

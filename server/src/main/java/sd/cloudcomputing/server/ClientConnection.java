@@ -40,7 +40,7 @@ public class ClientConnection extends AbstractConnection<GenericPacket, GenericP
         super.getLogger().info("Waiting for client to authenticate...");
         Client client = this.acceptLogin();
         if (client != null) {
-            this.getLogger().info("Client " + client.getName() + " authenticated successfully");
+            this.getLogger().info("Client " + client.name() + " authenticated successfully");
             this.clientConnectionManager.register(this, client);
             this.startReadWrite();
         }
@@ -51,7 +51,7 @@ public class ClientConnection extends AbstractConnection<GenericPacket, GenericP
             SerializeInput serializeInput = super.readEnd();
 
             CSAuthPacket csAuthPacket = super.getFrost().readSerializable(CSAuthPacket.class, serializeInput);
-            AuthenticateResult authenticateResult = clientManager.authenticateClient(csAuthPacket.getUsername(), csAuthPacket.getPassword());
+            AuthenticateResult authenticateResult = clientManager.authenticateClient(csAuthPacket.username(), csAuthPacket.password());
             SCAuthResult scAuthResult = new SCAuthResult(authenticateResult);
 
             SerializeOutput serializeOutput = writeEnd();
@@ -59,7 +59,7 @@ public class ClientConnection extends AbstractConnection<GenericPacket, GenericP
             super.getFrost().flush(serializeOutput);
 
             if (authenticateResult.isSuccess()) {
-                return this.client = clientManager.getClient(csAuthPacket.getUsername());
+                return this.client = clientManager.getClient(csAuthPacket.username());
             }
         } catch (IOException | SerializationException e) {
             this.getLogger().warn("Error authenticating client: " + e.getMessage());
@@ -71,7 +71,7 @@ public class ClientConnection extends AbstractConnection<GenericPacket, GenericP
     @Override
     protected GenericPacket mapPacketBeforeSend(GenericPacket packet) {
         if (packet.content() instanceof JobResult jobResult) {
-            super.getLogger().info("Sending job result " + jobResult.jobId() + " with " + jobResult.resultType() + " to " + client.getName());
+            super.getLogger().info("Sending job result " + jobResult.jobId() + " with " + jobResult.resultType() + " to " + client.name());
         }
         return packet;
     }
@@ -88,7 +88,7 @@ public class ClientConnection extends AbstractConnection<GenericPacket, GenericP
     @Override
     public void onDisconnect() {
         if (client != null) {
-            super.getLogger().info("Client " + client.getName() + " disconnected");
+            super.getLogger().info("Client " + client.name() + " disconnected");
             this.clientConnectionManager.disconnect(client);
         }
     }

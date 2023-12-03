@@ -38,7 +38,7 @@ public class ClientManager {
             return AuthenticateResult.REGISTERED;
         }
 
-        if (!Objects.equals(client.getPassword(), password)) {
+        if (!Objects.equals(client.password(), password)) {
             return AuthenticateResult.WRONG_PASSWORD;
         }
 
