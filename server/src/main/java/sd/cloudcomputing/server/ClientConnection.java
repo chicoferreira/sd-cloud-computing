@@ -43,6 +43,8 @@ public class ClientConnection extends AbstractConnection<GenericPacket, GenericP
             this.getLogger().info("Client " + client.name() + " authenticated successfully");
             this.clientConnectionManager.register(this, client);
             this.startReadWrite();
+        } else {
+            this.getLogger().info("Client failed to authenticate. Disconnected.");
         }
     }
 
@@ -61,6 +63,8 @@ public class ClientConnection extends AbstractConnection<GenericPacket, GenericP
             if (authenticateResult.isSuccess()) {
                 return this.client = clientManager.getClient(csAuthPacket.username());
             }
+
+            this.disconnect();
         } catch (IOException | SerializationException e) {
             this.getLogger().warn("Error authenticating client: " + e.getMessage());
         }
