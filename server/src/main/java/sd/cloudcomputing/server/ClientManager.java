@@ -27,22 +27,23 @@ public class ClientManager {
     }
 
     public AuthenticateResult authenticateClient(String name, String password) {
-        lock.readLock().lock();
-        Client client = clientByNameMap.get(name);
-        lock.readLock().unlock();
+        lock.writeLock().lock();
+        try {
+            Client client = clientByNameMap.get(name);
 
-        if (client == null) {
-            lock.writeLock().lock();
-            clientByNameMap.put(name, new Client(name, password));
+            if (client == null) {
+                clientByNameMap.put(name, new Client(name, password));
+                return AuthenticateResult.REGISTERED;
+            }
+
+            if (!Objects.equals(client.password(), password)) {
+                return AuthenticateResult.WRONG_PASSWORD;
+            }
+
+            return AuthenticateResult.LOGGED_IN;
+        } finally {
             lock.writeLock().unlock();
-            return AuthenticateResult.REGISTERED;
         }
-
-        if (!Objects.equals(client.password(), password)) {
-            return AuthenticateResult.WRONG_PASSWORD;
-        }
-
-        return AuthenticateResult.LOGGED_IN;
     }
 
 }
